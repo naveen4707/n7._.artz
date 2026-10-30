@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loomis AI — Master 20-Stage Classical Portrait Drawing Studio</title>
+  <meta name="description" content="AI-powered 20-stage Andrew Loomis portrait drawing studio. Transforms any human portrait photo into authentic hand-drawn graphite drawing steps.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/web/style.css">
+</head>
+<body class="theme-dark">
+  <div class="app-container">
+    <!-- TOP HEADER -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-symbol">
+          <svg viewBox="0 0 40 40" width="32" height="32" fill="none" stroke="currentColor">
+            <circle cx="20" cy="20" r="16" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.6" />
+            <circle cx="20" cy="18" r="12" stroke-width="2" />
+            <line x1="20" y1="6" x2="20" y2="34" stroke-width="1.5" stroke-linecap="round" />
+            <ellipse cx="20" cy="18" rx="12" ry="4" stroke-width="1.5" />
+            <path d="M12 22 Q 13 32 20 34 Q 27 32 28 22" stroke-width="1.8" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>LOOMIS <span>AI</span></h1>
+          <p class="brand-tagline">Classical 20-Stage Portrait Construction Studio</p>
+        </div>
+      </div>
+
+      <div class="header-status">
+        <span class="status-indicator online"></span>
+        <span id="engineStatusText">AI Engine Ready &bull; 20 Stages Synchronized</span>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnOpenUpload" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload New Portrait
+        </button>
+        <button id="btnDownloadZip" class="btn btn-secondary" title="Download Complete 20-Stage Drawing Suite (.ZIP)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Suite (.ZIP)
+        </button>
+        <button id="btnDownloadCurrent" class="btn btn-primary" title="Download Current Stage Drawing">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export Stage <span id="downloadStageNum">20</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN STUDIO WORKSPACE -->
+    <main class="studio-layout">
+      <!-- LEFT WORKSPACE: CANVAS & SCRUBBER -->
+      <section class="canvas-workspace">
+        <!-- VIEW MODE BAR -->
+        <div class="workspace-toolbar">
+          <div class="view-mode-tabs" role="tablist">
+            <button class="mode-tab active" data-mode="drawing" id="modeDrawing">
+              <span class="icon">&#9998;</span> Graphite Drawing
+            </button>
+            <button class="mode-tab" data-mode="split" id="modeSplit">
+              <span class="icon">&#9684;</span> Curtain Split Slider
+            </button>
+            <button class="mode-tab" data-mode="sidebyside" id="modeSide">
+              <span class="icon">&#9638;</span> Side-by-Side
+            </button>
+            <button class="mode-tab" data-mode="onion" id="modeOnion">
+              <span class="icon">&#9672;</span> Onion Skin Overlay
+            </button>
+            <button class="mode-tab" data-mode="grid" id="modeGrid">
+              <span class="icon">&#9638;</span> 20-Stage Grid
+            </button>
+          </div>
+
+          <div class="canvas-quick-tools">
+            <div class="ref-toggle-group" title="Reference Image Mode">
+              <button type="button" class="ref-toggle-btn active" id="btnRefBW" title="Black & White Converted (Loomis Tonal Reference)">
+                <span class="ref-icon">&#9680;</span> B&amp;W Ref
+              </button>
+              <button type="button" class="ref-toggle-btn" id="btnRefColor" title="Original Color Photo">
+                <span class="ref-icon">&#9681;</span> Color Photo
+              </button>
+            </div>
+            <label class="paper-texture-toggle" title="Toggle cold-pressed paper tooth">
+              <input type="checkbox" id="chkPaperTooth" checked>
+              <span>Paper Tooth</span>
+            </label>
+            <button id="btnZoomReset" class="tool-btn" title="Reset Zoom">100%</button>
+            <button id="btnFullscreen" class="tool-btn" title="Fullscreen Canvas">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- CANVAS VIEWPORT -->
+        <div class="canvas-viewport" id="canvasViewport">
+          <!-- VIEW CONTAINER: DRAWING ONLY -->
+          <div class="viewport-view view-drawing active" id="viewDrawing">
+            <div class="paper-frame">
+              <img id="mainDrawingImg" src="/output/hand_drawn/stage_20.png" alt="Loomis Drawing Stage" class="drawing-img">
+            </div>
+          </div>
+
+          <!-- VIEW CONTAINER: CURTAIN SPLIT SLIDER -->
+          <div class="viewport-view view-split" id="viewSplit">
+            <div class="split-container" id="splitContainer">
+              <div class="split-photo-layer">
+                <img id="splitPhotoImg" src="/input/reference.jpg" alt="Reference Photo" class="split-img">
+              </div>
+              <div class="split-drawing-layer" id="splitDrawingLayer">
+                <img id="splitDrawingImg" src="/output/hand_drawn/stage_20.png" alt="Drawing Layer" class="split-img">
+              </div>
+              <div class="split-handle" id="splitHandle">
+                <div class="handle-line"></div>
+                <div class="handle-grip">&#10094;&#10095;</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW CONTAINER: SIDE BY SIDE -->
+          <div class="viewport-view view-sidebyside" id="viewSideBySide">
+            <div class="sidebyside-card">
+              <div class="sidebyside-label">Reference Photo</div>
+              <div class="sidebyside-img-wrap">
+                <img id="sidePhotoImg" src="/input/reference.jpg" alt="Reference Photo">
+              </div>
+            </div>
+            <div class="sidebyside-card">
+              <div class="sidebyside-label">Stage <span class="sideStageNum">20</span> Drawing</div>
+              <div class="sidebyside-img-wrap">
+                <img id="sideDrawingImg" src="/output/hand_drawn/stage_20.png" alt="Loomis Drawing">
+              </div>
+            </div>
+          </div>
+
+          <!-- VIEW CONTAINER: ONION SKIN -->
+          <div class="viewport-view view-onion" id="viewOnion">
+            <div class="onion-container">
+              <img id="onionPhotoImg" src="/input/reference.jpg" alt="Reference Photo" class="onion-photo">
+              <img id="onionDrawingImg" src="/output/hand_drawn/stage_20.png" alt="Drawing Overlay" class="onion-drawing">
+            </div>
+            <div class="onion-control-bar">
+              <span>Photo</span>
+              <input type="range" id="onionSlider" min="0" max="100" value="65">
+              <span>Drawing</span>
+              <span id="onionValue">65%</span>
+            </div>
+          </div>
+
+          <!-- VIEW CONTAINER: 20-STAGE GRID -->
+          <div class="viewport-view view-grid" id="viewGrid">
+            <div class="stages-grid-container" id="stagesGridContainer">
+              <!-- Populated dynamically via JS -->
+            </div>
+          </div>
+
+          <!-- LOADING OVERLAY -->
+          <div class="pipeline-loader hidden" id="pipelineLoader">
+            <div class="loader-card">
+              <div class="pencil-spinner">
+                <div class="pencil-icon">&#9998;</div>
+                <div class="spinner-ring"></div>
+              </div>
+              <h3 id="loaderTitle">Rendering Loomis Armature...</h3>
+              <p id="loaderSubtitle">Constructing 20 graphite drawing stages from uploaded photo</p>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progressBarFill" style="width: 15%;"></div>
+              </div>
+              <div class="loader-steps-log" id="loaderLog">MediaPipe 478 Landmark analysis complete...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STAGE PLAYBACK & TIMELINE CONTROLS -->
+        <div class="playback-panel">
+          <div class="playback-controls">
+            <button id="btnPrevStage" class="ctrl-btn" title="Previous Stage (Left Arrow)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="19 20 9 12 19 4 19 20"/><line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2"/></svg>
+            </button>
+            <button id="btnPlayPause" class="ctrl-btn play-btn" title="Animate Through All 20 Stages (Spacebar)">
+              <svg id="playIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <svg id="pauseIcon" class="hidden" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            </button>
+            <button id="btnNextStage" class="ctrl-btn" title="Next Stage (Right Arrow)">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2"/></svg>
+            </button>
+
+            <div class="playback-speed-select">
+              <label>Speed:</label>
+              <select id="selSpeed">
+                <option value="1600">0.6x (Slow)</option>
+                <option value="1000" selected>1.0x (Normal)</option>
+                <option value="500">2.0x (Fast)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- SCRUBBER SLIDER -->
+          <div class="scrubber-wrapper">
+            <div class="scrubber-header">
+              <span class="scrub-label">STAGE <span id="scrubCurrentNum">20</span> OF 20</span>
+              <span class="scrub-title" id="scrubTitle">Final Master Graphite Portrait</span>
+            </div>
+            <input type="range" id="stageSlider" min="0" max="20" value="20" step="1" class="stage-slider">
+          </div>
+
+          <!-- QUICK STAGE DOTS (1 TO 20) -->
+          <div class="stage-dots-grid" id="stageDotsGrid">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT SIDEBAR: MASTERCLASS LESSON & TELEMETRY -->
+      <aside class="lesson-sidebar">
+        <!-- CURRENT STAGE HERO CARD -->
+        <div class="card stage-hero-card">
+          <div class="card-header">
+            <span class="category-badge" id="badgeCategory">Masterpiece Finish</span>
+            <span class="pencil-badge" id="badgePencil" title="Recommended graphite pencil hardness">
+              <span class="pencil-core"></span>
+              <span id="badgePencilText">6B Deep Charcoal</span>
+            </span>
+          </div>
+
+          <div class="hero-stage-number" id="heroStageNumber">STAGE 20</div>
+          <h2 class="hero-stage-title" id="heroStageTitle">Final Master Graphite Portrait</h2>
+
+          <div class="lesson-section">
+            <div class="section-label">ANDREW LOOMIS DRAWING PRINCIPLE</div>
+            <blockquote class="loomis-quote" id="loomisPrinciple">
+              "The ultimate synthesis of structural foundation, anatomical accuracy, and artistic expression. The underlying geometric spheres must whisper beneath the final tone."
+            </blockquote>
+          </div>
+
+          <div class="lesson-section">
+            <div class="section-label">ARTIST DRAWING ACTION (HOW TO DRAW THIS STEP)</div>
+            <p class="drawing-action-text" id="drawingAction">
+              Final balance: harmonize the faint underdrawing construction lines with rich, velvety graphite portraiture. Enhance primary light contrast and soften peripheral details.
+            </p>
+          </div>
+        </div>
+
+        <!-- PORTRAIT RECOGNITION TELEMETRY CARD -->
+        <div class="card telemetry-card">
+          <div class="card-header">
+            <span class="card-title">ANATOMICAL TELEMETRY</span>
+            <span class="badge-mini" id="telemetryFaceStatus">Face Locked</span>
+          </div>
+
+          <div class="telemetry-grid">
+            <div class="telemetry-item">
+              <span class="t-label">Perspective</span>
+              <span class="t-value highlight" id="tPerspective">3/4 View</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="t-label">Eye State</span>
+              <span class="t-value" id="tEyeState">Open Gaze</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="t-label">Yaw Angle</span>
+              <span class="t-value" id="tYaw">-1.2°</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="t-label">Pitch Angle</span>
+              <span class="t-value" id="tPitch">+2.5°</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="t-label">Roll Tilt</span>
+              <span class="t-value" id="tRoll">+0.8°</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="t-label">3D Landmarks</span>
+              <span class="t-value highlight">478 Pts</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="t-label">Shadow Angle</span>
+              <span class="t-value" id="tLight">-30° Left</span>
+            </div>
+            <div class="telemetry-item">
+              <span class="t-label">Special Marks</span>
+              <span class="t-value" id="tMarks">Forehead Bindi</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- GEOMETRY VALIDATION & ACTIONABLE CORRECTIONS CARD -->
+        <div class="card validation-card">
+          <div class="card-header">
+            <span class="card-title">GEOMETRY VALIDATION</span>
+            <span class="badge-mini badge-score" id="valScoreBadge">94.0% PASS</span>
+          </div>
+
+          <div class="val-meter-wrap">
+            <div class="val-meter-label">
+              <span>Rule of Thirds Proportions</span>
+              <span id="valThirdsDev">7.8% deviation</span>
+            </div>
+            <div class="thirds-bar-track">
+              <div class="thirds-bar-seg upper" id="segUpper" style="width: 21.6%;" title="Upper Third: Hairline to Brow (22%)">22%</div>
+              <div class="thirds-bar-seg mid" id="segMid" style="width: 42.5%;" title="Middle Third: Brow to Nose Base (42%)">42%</div>
+              <div class="thirds-bar-seg lower" id="segLower" style="width: 35.9%;" title="Lower Third: Nose to Chin (36%)">36%</div>
+            </div>
+          </div>
+
+          <div class="val-items-grid">
+            <div class="val-item">
+              <span class="v-label">Interocular Spacing</span>
+              <span class="v-value" id="valInterocular">1.14x (PASS)</span>
+            </div>
+            <div class="val-item">
+              <span class="v-label">Plane Tilt Angle</span>
+              <span class="v-value" id="valPlaneTilt">3.2° (PASS)</span>
+            </div>
+          </div>
+
+          <div class="val-recommendation" id="valRecommendation">
+            <span class="rec-icon">&#9881;</span>
+            <span id="valRecText">Head pitch is +13.1°. Upper third is foreshortened by upward tilt; maintain arched brow equator.</span>
+          </div>
+        </div>
+
+        <!-- AI ART ASSISTANT & REALTIME COACH -->
+        <div class="card ai-coach-card">
+          <div class="card-header">
+            <div class="coach-header-brand">
+              <span class="coach-avatar">&#127912;</span>
+              <span class="card-title">LOOMIS AI ART COACH</span>
+            </div>
+            <span class="badge-mini active">Live Assistant</span>
+          </div>
+
+          <div class="coach-speech-bubble" id="coachSpeechBubble">
+            "Welcome! I am your AI Loomis Drawing Assistant. Upload any human portrait photo to generate its custom 20-stage Loomis Method construction. Scrub through stages or ask for drawing coaching below!"
+          </div>
+
+          <div class="coach-actions-grid">
+            <button class="coach-btn" id="btnCoachProportions" title="Analyze this subject's facial angles and proportions">
+              <span class="btn-icon">&#128208;</span> Head Proportions
+            </button>
+            <button class="coach-btn" id="btnCoachTechnique" title="Step-by-step drawing technique for this stage">
+              <span class="btn-icon">&#9998;</span> Sketch Technique
+            </button>
+            <button class="coach-btn" id="btnCoachMistakes" title="Common mistakes beginners make at this stage">
+              <span class="btn-icon">&#9888;</span> Common Mistakes
+            </button>
+            <button class="coach-btn" id="btnCoachPencil" title="Graphite grade, pressure, and eraser advice">
+              <span class="btn-icon">&#128394;</span> Graphite Tools
+            </button>
+          </div>
+        </div>
+
+        <!-- DEMO PRESETS & QUICK SAMPLES -->
+        <div class="card presets-card">
+          <div class="card-header">
+            <span class="card-title">TRY PRESET PORTRAITS</span>
+          </div>
+          <div class="preset-buttons" id="presetsList">
+            <button class="preset-btn active" data-filename="reference.jpg">
+              <span class="preset-thumb">&#128105;</span>
+              <span class="preset-name">Classical Indian Saree</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- UPLOAD MODAL -->
+    <div class="modal-overlay hidden" id="uploadModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Upload Any Human Portrait Photo</h3>
+          <button class="modal-close" id="btnCloseUpload">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-desc">
+            Upload any front or 3/4 angle photo of a person (men, women, children, any hairstyle, hats, or clothing).
+            Loomis AI dynamically detects the head angles, 3D cranium sphere, real hair silhouette, neck, and clothing to render all 20 instructional drawing steps!
+          </p>
+
+          <div class="dropzone" id="dropzone">
+            <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" style="display:none">
+            <div class="dropzone-content">
+              <div class="dropzone-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M12 12v9m-4-4 4-4 4 4"/>
+                </svg>
+              </div>
+              <h4>Drag & drop portrait image here</h4>
+              <p>or <button type="button" class="link-btn" id="btnBrowse">browse from computer</button></p>
+              <span class="file-limits">Supports JPG, PNG, WEBP up to 25MB</span>
+            </div>
+            <div class="dropzone-preview hidden" id="dropzonePreview">
+              <div class="preview-dual-wrap">
+                <div class="preview-dual-col">
+                  <div class="preview-dual-header">1. Uploaded Photo</div>
+                  <div class="preview-img-frame">
+                    <img id="previewImg" src="" alt="Selected Preview">
+                  </div>
+                </div>
+                <div class="preview-dual-arrow">
+                  <span>&#10140;</span>
+                  <small>Auto B&amp;W</small>
+                </div>
+                <div class="preview-dual-col">
+                  <div class="preview-dual-header highlight">2. B&amp;W Picture (Converted)</div>
+                  <div class="preview-img-frame bw-frame">
+                    <img id="previewBwImg" src="" alt="Black and White Converted Preview">
+                    <div class="preview-bw-spinner hidden" id="previewBwSpinner">
+                      <div class="mini-spinner"></div>
+                      <span>Converting to B&amp;W...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="preview-info">
+                <div class="preview-text-meta">
+                  <span id="previewFilename">filename.jpg</span>
+                  <span class="preview-badge-status" id="previewBwStatus">&#10003; Photographic Tonal B&amp;W Converted</span>
+                </div>
+                <button type="button" class="btn-remove" id="btnRemoveFile">&times; Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btnCancelUpload">Cancel</button>
+          <button class="btn btn-primary" id="btnStartProcessing" disabled>
+            <span class="btn-icon">&#10024;</span> Generate 20-Stage Loomis Steps
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/web/app.js"></script>
+</body>
+</html>

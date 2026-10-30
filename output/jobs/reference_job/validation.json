@@ -1,0 +1,107 @@
+{
+  "version": "2.0",
+  "overall_score": 89.5,
+  "status": "PASS",
+  "normalizing_interocular_px": 62.1,
+  "normalizing_face_height_px": 303.4,
+  "components": [
+    {
+      "name": "Rule of Thirds",
+      "measured_ratios": {
+        "upper_pct": 21.6,
+        "mid_pct": 42.5,
+        "lower_pct": 35.9
+      },
+      "expected_ratios": {
+        "upper_pct": 33.3,
+        "mid_pct": 33.3,
+        "lower_pct": 33.3
+      },
+      "deviation_percent": 7.8,
+      "unit": "percent",
+      "evidence_type": "directly_observed",
+      "confidence": 0.94,
+      "status": "PASS",
+      "actionable_recommendation": "Head pitch is +13.1°. Upper third is foreshortened by upward tilt; maintain arched brow equator."
+    },
+    {
+      "name": "Interocular Spacing (Five Eyes Rule)",
+      "measured_value": 1.14,
+      "expected_value": 1.0,
+      "deviation_percent": 14.0,
+      "unit": "eye_width_ratio",
+      "evidence_type": "directly_observed",
+      "confidence": 0.96,
+      "status": "PASS",
+      "actionable_recommendation": "Interocular space matches 1 eye width."
+    },
+    {
+      "name": "Head Pose & Eye Plane Alignment",
+      "measured_value": 3.2,
+      "expected_value": -2.2,
+      "deviation": 5.49,
+      "unit": "degrees",
+      "evidence_type": "estimated_geometry",
+      "confidence": 0.92,
+      "status": "WARNING",
+      "actionable_recommendation": "Eye plane tilt (3.2°) deviates from head roll (-2.2°); verify landmark tilt.",
+      "pose_summary": {
+        "yaw": 6.4,
+        "pitch": 13.1,
+        "roll": -2.2,
+        "orientation": "front"
+      }
+    },
+    {
+      "name": "Cranial Sphere Proportion",
+      "measured_value": 0.0,
+      "expected_value": 145.6,
+      "deviation": 145.6,
+      "deviation_percent": 100.0,
+      "unit": "pixels",
+      "evidence_type": "inferred_structure",
+      "confidence": 0.88,
+      "status": "WARNING",
+      "actionable_recommendation": "Cranial ball diameter should be adjusted to balance the facial height."
+    },
+    {
+      "name": "Feature Centerline Alignment",
+      "measured_value": 0.0,
+      "expected_value": 0.0,
+      "deviation": 0.0,
+      "unit": "pixels",
+      "evidence_type": "directly_observed",
+      "confidence": 0.98,
+      "status": "PASS",
+      "actionable_recommendation": "Facial features securely anchored to central meridian."
+    },
+    {
+      "name": "Stage Continuity & Completeness",
+      "total_stages": 20,
+      "valid_stages": 20,
+      "missing_stages": [],
+      "unit": "count",
+      "evidence_type": "inferred_structure",
+      "status": "PASS",
+      "actionable_recommendation": "All 20 stages generated with verified 1000x1200 dimensions."
+    }
+  ],
+  "corrections": {
+    "brow_equator_curvature": 2.72,
+    "eye_plane_angle_deg": -2.25,
+    "mandible_perspective_compression": 0.974,
+    "foreshortening_recommended": true
+  },
+  "warnings": [
+    "Eye plane tilt (3.2°) deviates from head roll (-2.2°); verify landmark tilt.",
+    "Cranial ball diameter should be adjusted to balance the facial height."
+  ],
+  "recommendations": [
+    "Head pitch is +13.1°. Upper third is foreshortened by upward tilt; maintain arched brow equator.",
+    "Interocular space matches 1 eye width.",
+    "Eye plane tilt (3.2°) deviates from head roll (-2.2°); verify landmark tilt.",
+    "Cranial ball diameter should be adjusted to balance the facial height.",
+    "Facial features securely anchored to central meridian.",
+    "All 20 stages generated with verified 1000x1200 dimensions."
+  ]
+}

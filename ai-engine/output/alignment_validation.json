@@ -1,0 +1,54 @@
+{
+  "version": "5.0",
+  "engine": {
+    "landmarkCount": 478,
+    "faceWidth": 263.472,
+    "anchorTolerancePixels": 13.174,
+    "structuralTolerancePixels": 26.347
+  },
+  "components": [
+    {
+      "name": "Cranium",
+      "type": "inferred_structure",
+      "errorPixels": 5.981,
+      "score": 77.3
+    },
+    {
+      "name": "Center axis",
+      "type": "direct_landmark",
+      "errorPixels": 0.0,
+      "score": 100.0
+    },
+    {
+      "name": "Eye plane",
+      "type": "direct_landmark",
+      "errorPixels": 0.0,
+      "score": 100.0
+    },
+    {
+      "name": "Nose construction",
+      "type": "direct_landmark",
+      "errorPixels": 0.0,
+      "score": 100.0
+    },
+    {
+      "name": "Mouth construction",
+      "type": "direct_landmark",
+      "errorPixels": 0.0,
+      "score": 100.0
+    },
+    {
+      "name": "Chin",
+      "type": "direct_landmark",
+      "errorPixels": 0.0,
+      "score": 100.0
+    },
+    {
+      "name": "Jaw contour",
+      "type": "direct_landmark",
+      "errorPixels": 0.0,
+      "score": 100.0
+    }
+  ],
+  "overallScore": 97.61
+}

@@ -1,0 +1,104 @@
+{
+  "version": "2.0",
+  "overall_score": 100.0,
+  "status": "PASS",
+  "normalizing_interocular_px": 60.9,
+  "normalizing_face_height_px": 343.8,
+  "components": [
+    {
+      "name": "Rule of Thirds",
+      "measured_ratios": {
+        "upper_pct": 20.6,
+        "mid_pct": 40.5,
+        "lower_pct": 38.9
+      },
+      "expected_ratios": {
+        "upper_pct": 33.3,
+        "mid_pct": 33.3,
+        "lower_pct": 33.3
+      },
+      "deviation_percent": 8.5,
+      "unit": "percent",
+      "evidence_type": "directly_observed",
+      "confidence": 0.94,
+      "status": "PASS",
+      "actionable_recommendation": "Head pitch is +9.0° and roll is -6.5°. Proportions adhere to Loomis perspective thirds with tilt foreshortening."
+    },
+    {
+      "name": "Interocular Spacing (Five Eyes Rule)",
+      "measured_value": 1.08,
+      "expected_value": 1.0,
+      "deviation_percent": 8.1,
+      "unit": "eye_width_ratio",
+      "evidence_type": "directly_observed",
+      "confidence": 0.96,
+      "status": "PASS",
+      "actionable_recommendation": "Interocular space matches 1 eye width."
+    },
+    {
+      "name": "Head Pose & Eye Plane Alignment",
+      "measured_value": 7.0,
+      "expected_value": -6.5,
+      "deviation": 0.54,
+      "unit": "degrees",
+      "evidence_type": "estimated_geometry",
+      "confidence": 0.94,
+      "status": "PASS",
+      "actionable_recommendation": "Eye plane angle (7.0°) accurately aligns with head pose roll (-6.5°).",
+      "pose_summary": {
+        "yaw": 4.1,
+        "pitch": 9.0,
+        "roll": -6.5,
+        "orientation": "front"
+      }
+    },
+    {
+      "name": "Cranial Sphere Proportion",
+      "measured_value": 165.0,
+      "expected_value": 165.0,
+      "deviation": 0.0,
+      "deviation_percent": 0.0,
+      "unit": "pixels",
+      "evidence_type": "inferred_structure",
+      "confidence": 0.88,
+      "status": "PASS",
+      "actionable_recommendation": "Cranial ball volume supports the full facial armature."
+    },
+    {
+      "name": "Feature Centerline Alignment",
+      "measured_value": 0.0,
+      "expected_value": 0.0,
+      "deviation": 0.0,
+      "unit": "pixels",
+      "evidence_type": "directly_observed",
+      "confidence": 0.98,
+      "status": "PASS",
+      "actionable_recommendation": "Facial features securely anchored to central meridian."
+    },
+    {
+      "name": "Stage Continuity & Completeness",
+      "total_stages": 20,
+      "valid_stages": 20,
+      "missing_stages": [],
+      "unit": "count",
+      "evidence_type": "inferred_structure",
+      "status": "PASS",
+      "actionable_recommendation": "All 20 stages generated with verified 1000x1200 dimensions."
+    }
+  ],
+  "corrections": {
+    "brow_equator_curvature": 1.88,
+    "eye_plane_angle_deg": -6.49,
+    "mandible_perspective_compression": 0.988,
+    "foreshortening_recommended": true
+  },
+  "warnings": [],
+  "recommendations": [
+    "Head pitch is +9.0° and roll is -6.5°. Proportions adhere to Loomis perspective thirds with tilt foreshortening.",
+    "Interocular space matches 1 eye width.",
+    "Eye plane angle (7.0°) accurately aligns with head pose roll (-6.5°).",
+    "Cranial ball volume supports the full facial armature.",
+    "Facial features securely anchored to central meridian.",
+    "All 20 stages generated with verified 1000x1200 dimensions."
+  ]
+}

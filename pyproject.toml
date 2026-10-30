@@ -1,0 +1,7 @@
+[tool.pyright]
+include = ["ai-engine", "tests"]
+extraPaths = ["ai-engine/src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["ai-engine/src"]
