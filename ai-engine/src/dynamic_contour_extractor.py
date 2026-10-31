@@ -87,20 +87,26 @@ class DynamicContourExtractor:
     # ─────────────────────────────────────────────────────────────
 
     def _extract_all_contours(self) -> None:
-        if not self.has_image():
+        if not self.has_image() or self.gray is None:
             self._hair_contours_cache = []
             self._clothing_contours_cache = []
             self._clothing_major_cache = []
             return
 
+        gray = self.gray
         # 1. Bilateral filter preserves sharp physical boundaries while smoothing skin pore noise
-        bi = cv2.bilateralFilter(self.gray, 9, 65, 65)
+        bi = cv2.bilateralFilter(gray, 9, 65, 65)
 
         # 2. Canny edges capturing hair boundaries, garment drape, and fabric folds
         edges = cv2.Canny(bi, 28, 75)
 
         # 3. Create inner face mask to avoid edge clutter across eyes, nose, and mouth
-        face_pts = [self.lm(i) for i in FACE_OVAL if self.lm(i) is not None]
+        face_pts: List[Point] = []
+        for i in FACE_OVAL:
+            pt = self.lm(i)
+            if pt is not None:
+                face_pts.append(pt)
+
         if len(face_pts) >= 8:
             face_poly = np.array([[int(p[0]), int(p[1])] for p in face_pts], dtype=np.int32)
             inner_mask = np.zeros((self.h, self.w), dtype=np.uint8)
@@ -190,7 +196,7 @@ class DynamicContourExtractor:
         Returns: ((canvas_x, canvas_y), radius) if present, else None.
         Never fabricates marks on subjects who do not have one!
         """
-        if not self.has_image():
+        if not self.has_image() or self.gray is None:
             return None
 
         f10 = self.lm(10)
@@ -235,7 +241,7 @@ class DynamicContourExtractor:
         Estimates the key lighting angle (in degrees) from cheek luminance.
         Positive = light from right, Negative = light from left.
         """
-        if not self.has_image():
+        if not self.has_image() or self.gray is None:
             return 25.0
 
         l_cheek = self.lm(234)

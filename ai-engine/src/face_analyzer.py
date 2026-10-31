@@ -1,4 +1,5 @@
 import math
+from typing import Any
 
 
 class FaceAnalyzer:
@@ -78,7 +79,7 @@ class FaceAnalyzer:
 
         return points
 
-    def calculate_measurements(self, points):
+    def calculate_measurements(self, points) -> dict[str, Any]:
         head_width = self.distance(
             points["left_face"],
             points["right_face"]

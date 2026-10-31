@@ -28,8 +28,12 @@ class AccuratePortraitAnalyzer:
         self.analysis_path = Path(analysis_path)
         self.construction_path = Path(construction_path)
 
-        self.img = cv2.imread(str(self.img_path))
-        self.h, self.w = self.img.shape[:2]
+        loaded_img = cv2.imread(str(self.img_path))
+        if loaded_img is None:
+            raise FileNotFoundError(f"Could not load image at {self.img_path}")
+        self.img: np.ndarray = loaded_img
+        self.h: int = int(self.img.shape[0])
+        self.w: int = int(self.img.shape[1])
 
         with open(self.analysis_path, "r", encoding="utf-8") as f:
             self.analysis = json.load(f)
@@ -48,10 +52,13 @@ class AccuratePortraitAnalyzer:
                               288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149,
                               150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109]
         ]
-        min_x = min(p[0] for p in face_pts)
-        max_x = max(p[0] for p in face_pts)
-        min_y = min(p[1] for p in face_pts)
-        max_y = max(p[1] for p in face_pts)
+        if not face_pts:
+            min_x, max_x, min_y, max_y = 0.0, float(self.w), 0.0, float(self.h)
+        else:
+            min_x = min(p[0] for p in face_pts)
+            max_x = max(p[0] for p in face_pts)
+            min_y = min(p[1] for p in face_pts)
+            max_y = max(p[1] for p in face_pts)
         width = max_x - min_x
         height = max_y - min_y
         scale_x = 650.0 / max(width, 1.0)
@@ -85,10 +92,24 @@ class AccuratePortraitAnalyzer:
         """Accurately find forehead bindi position on canvas."""
         f10 = self.lm(10)
         g168 = self.lm(168)
-        crop = self.img[int(f10[1]):int(g168[1]), int(f10[0]-35):int(f10[0]+35)]
+        if f10 is None or g168 is None:
+            return (self.offset_x + 325.0, self.offset_y + 300.0)
+
+        y1 = max(0, min(int(f10[1]), int(g168[1])))
+        y2 = min(self.h, max(int(f10[1]), int(g168[1])))
+        x1 = max(0, int(f10[0] - 35))
+        x2 = min(self.w, int(f10[0] + 35))
+
+        if y2 <= y1 or x2 <= x1:
+            return self.transform(((f10[0] + g168[0]) / 2, (f10[1] + g168[1]) / 2))
+
+        crop = self.img[y1:y2, x1:x2]
+        if crop.size == 0:
+            return self.transform(((f10[0] + g168[0]) / 2, (f10[1] + g168[1]) / 2))
+
         gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(gray)
-        bindi_img = (int(f10[0] - 35) + min_loc[0], int(f10[1]) + min_loc[1])
+        bindi_img = (x1 + min_loc[0], y1 + min_loc[1])
         return self.transform(bindi_img)
 
     def extract_hair_contours(self) -> Dict[str, Any]:
