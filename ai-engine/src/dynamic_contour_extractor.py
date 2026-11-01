@@ -134,11 +134,11 @@ class DynamicContourExtractor:
         clothing_edges = edges.copy()
         clothing_edges[:chin_y - 10, :] = 0
 
-        # Extract hair contours
-        self._hair_contours_cache = self._contours_to_canvas(hair_edges, min_len=20, epsilon=1.8)
+        # Extract hair contours (focused on long sweeping volume ribbons and locks)
+        self._hair_contours_cache = self._contours_to_canvas(hair_edges, min_len=28, epsilon=2.2)
 
         # Extract all clothing contours (neck, collar, dress, fabric folds)
-        self._clothing_contours_cache = self._contours_to_canvas(clothing_edges, min_len=22, epsilon=2.0)
+        self._clothing_contours_cache = self._contours_to_canvas(clothing_edges, min_len=26, epsilon=2.2)
 
         # Extract major structural clothing contours (longer lines: neckline, shoulder slope)
         self._clothing_major_cache = self._contours_to_canvas(clothing_edges, min_len=55, epsilon=2.4)

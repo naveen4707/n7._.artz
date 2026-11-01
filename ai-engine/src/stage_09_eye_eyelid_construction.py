@@ -182,6 +182,12 @@ class Stage09EyeRenderer:
         if len(upper_lid) >= 2:
             engine.quality.structural_stroke(upper_lid, strength=0.88 if is_closed else 0.82, width=1.20 if is_closed else 1.15)
 
+            # Eyelid thickness margin plane (delicate downward rim defining 3D lid volume)
+            thickness_pts: List[Point] = [
+                (p[0] - nx * 1.2, p[1] - ny * 1.2) for p in upper_lid
+            ]
+            engine.quality.ghost_stroke(thickness_pts, strength=0.32, width=0.62)
+
             # Single clean upper eyelid crease (natural supratarsal fold above the lid)
             crease_pts: List[Point] = []
             crease_h = (height * 0.35 + 2.5) if is_closed else (height * 0.20)

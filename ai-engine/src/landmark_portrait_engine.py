@@ -494,18 +494,59 @@ class LandmarkPortraitEngine:
                 engine.quality.pencil_stroke(mid, strength=0.88, width=1.25, passes=2)
 
     def draw_nose(self, engine) -> None:
+        """
+        Stage 11: Classical Loomis 5-plane nose construction.
+        Keystone root wedge, dorsal bridge spine, lateral side slopes,
+        spherical tip ball, alar wings, and columella underplane.
+        """
         data = self.get_nose_data()
         tip = data["tip"]
         l_wing = data["left_wing"]
         r_wing = data["right_wing"]
         nostril_l = data["nostril_l"]
         nostril_r = data["nostril_r"]
+        bridge = data.get("bridge")
 
+        # 1. Nasal root / glabella transition
+        root_pt = self.lm(168) or self.lm(6)
+        if root_pt and tip:
+            engine.quality.ghost_stroke([root_pt, tip], strength=0.45, width=0.80)
+
+        # 2. Central dorsal nasal bridge spine
+        if bridge and len(bridge) >= 2:
+            engine.quality.structural_stroke(bridge, strength=0.82, width=1.15)
+
+            # Lateral side slope guidelines (parallel guides along bridge)
+            if len(bridge) >= 4:
+                b_top = bridge[0]
+                b_mid = bridge[len(bridge) // 2]
+                bw = 8.0 * self.scale
+                engine.quality.ghost_stroke([
+                    (b_top[0] - bw * 0.7, b_top[1]),
+                    (b_mid[0] - bw, b_mid[1]),
+                ], strength=0.28, width=0.65)
+                engine.quality.ghost_stroke([
+                    (b_top[0] + bw * 0.7, b_top[1]),
+                    (b_mid[0] + bw, b_mid[1]),
+                ], strength=0.28, width=0.65)
+
+        # 3. Ball of the nose (spherical tip construction)
+        if tip:
+            tip_r = 8.5 * self.scale
+            engine.quality.construction_stroke(
+                _circle_pts(tip, tip_r, 24),
+                strength=0.42,
+                width=0.82,
+                closed=True,
+            )
+
+        # 4. Alar wings (nostril flares)
         if l_wing:
             engine.quality.structural_stroke(l_wing, strength=0.84, width=1.15)
         if r_wing:
             engine.quality.structural_stroke(r_wing, strength=0.84, width=1.15)
 
+        # 5. Nostrils and columella under-plane
         if nostril_l and nostril_r:
             # Dark crescent nostril accents
             engine.quality.structural_stroke([
@@ -521,44 +562,166 @@ class LandmarkPortraitEngine:
 
             if tip:
                 nose_base_pts = _catmull_rom_chain([nostril_l, (tip[0], tip[1] + 5 * self.scale), nostril_r], 5)
-                engine.quality.construction_stroke(nose_base_pts, strength=0.60, width=0.90)
-
-        # 3D nose bridge contour along dorsal crest
-        bridge = data["bridge"]
-        if bridge and len(bridge) >= 3:
-            engine.quality.ghost_stroke(bridge, strength=0.55, width=0.85)
+                engine.quality.construction_stroke(nose_base_pts, strength=0.68, width=0.95)
 
         # Underplane septum facet for upward pitch angles
         pose = self.analysis.get("pose", {})
         pitch = float(pose.get("pitch", 0.0) or 0.0)
-        if pitch > 4.0 and tip and nostril_l and nostril_r:
+        if pitch > 3.0 and tip and nostril_l and nostril_r:
             septum_pts = _catmull_rom_chain([nostril_l, (tip[0], tip[1] + 2.5 * self.scale), nostril_r], 4)
             engine.quality.structural_stroke(septum_pts, strength=0.82, width=1.15)
 
     def draw_lips(self, engine) -> None:
+        """
+        Stage 12: Classical Loomis oral architecture & dental muzzle.
+        - Curved dental cylinder arc
+        - Sinuous line of closure (oral fissure) with Cupid's bow dip
+        - Corner modiolus nodes
+        - Upper lip 3 cushions (central tubercle + 2 lateral wings)
+        - Lower lip 2 cushions (left & right rounded pads with central sulcus)
+        - Philtrum columns connecting subnasale to Cupid's bow
+        - Labiomental groove separating lower lip from chin
+        """
         data = self.get_lip_data()
         closure = data.get("closure")
         uo = data.get("upper_outer")
         lo = data.get("lower_outer")
+        c_left = data.get("mouth_left")
+        c_right = data.get("mouth_right")
 
+        # 1. Cylindrical dental muzzle barrel guide
+        if c_left and c_right:
+            mid_x = (c_left[0] + c_right[0]) * 0.5
+            mid_y = (c_left[1] + c_right[1]) * 0.5
+            muzzle_w = math.hypot(c_right[0] - c_left[0], c_right[1] - c_left[1]) * 0.60
+            muzzle_arc = _catmull_rom_chain([
+                (c_left[0] - 6 * self.scale, c_left[1] - 4 * self.scale),
+                (mid_x, mid_y - 12 * self.scale),
+                (c_right[0] + 6 * self.scale, c_right[1] - 4 * self.scale),
+            ], 6)
+            engine.quality.ghost_stroke(muzzle_arc, strength=0.22, width=0.62)
+
+        # 2. Sinuous line of closure (interlabial oral fissure)
         if closure:
             engine.quality.structural_stroke(closure, strength=0.98, width=1.65)
-        if uo:
-            engine.quality.structural_stroke(uo, strength=0.88, width=1.25)
-        if lo:
-            engine.quality.structural_stroke(lo, strength=0.80, width=1.15)
 
-        for corner in [data["mouth_left"], data["mouth_right"]]:
+        # 3. Corner modiolus nodes (muscular nodes at oral commissures)
+        for corner in [c_left, c_right]:
             if corner:
                 engine.quality.structural_stroke(
-                    _circle_pts(corner, 1.8 * self.scale, 8), strength=0.92, width=1.0, closed=True
+                    _circle_pts(corner, 2.2 * self.scale, 8), strength=0.92, width=1.05, closed=True
                 )
+
+        # 4. Upper lip vermilion contour
+        if uo:
+            engine.quality.structural_stroke(uo, strength=0.88, width=1.25)
+
+        # 5. Lower lip vermilion contour
+        if lo:
+            engine.quality.structural_stroke(lo, strength=0.82, width=1.18)
+
+        # 6. Upper lip 3 cushions:
+        # - Central labial tubercle (hanging down at center under Cupid's bow)
+        # - Left lateral wing & Right lateral wing
+        p_tubercle_top = self.lm(0)
+        p_tubercle_bot = self.lm(13)
+        if p_tubercle_top and p_tubercle_bot:
+            tub_cx = (p_tubercle_top[0] + p_tubercle_bot[0]) * 0.5
+            tub_cy = (p_tubercle_top[1] + p_tubercle_bot[1]) * 0.5
+            tub_rx = 5.0 * self.scale
+            tub_ry = math.hypot(p_tubercle_bot[0] - p_tubercle_top[0], p_tubercle_bot[1] - p_tubercle_top[1]) * 0.45
+            tub_pts = _circle_pts((tub_cx, tub_cy), max(tub_rx, 2.5), 16)
+            engine.quality.ghost_stroke(tub_pts, strength=0.32, width=0.65, closed=True)
+
+        # 7. Lower lip 2 cushions (two side-by-side rounded oval pads):
+        # Left cushion & Right cushion separated by central sulcus
+        p_lo_center = self.lm(17)
+        if p_lo_center and c_left and c_right:
+            cushion_r = 7.5 * self.scale
+            # Left cushion center
+            pad_l_cx = (c_left[0] + p_lo_center[0] * 2) / 3.0
+            pad_l_cy = (c_left[1] + p_lo_center[1] * 2) / 3.0 - 2 * self.scale
+            engine.quality.ghost_stroke(_circle_pts((pad_l_cx, pad_l_cy), cushion_r, 16), strength=0.28, width=0.65, closed=True)
+
+            # Right cushion center
+            pad_r_cx = (c_right[0] + p_lo_center[0] * 2) / 3.0
+            pad_r_cy = (c_right[1] + p_lo_center[1] * 2) / 3.0 - 2 * self.scale
+            engine.quality.ghost_stroke(_circle_pts((pad_r_cx, pad_r_cy), cushion_r, 16), strength=0.28, width=0.65, closed=True)
+
+            # Central sulcus indentation line between lower cushions
+            engine.quality.ghost_stroke([
+                (p_lo_center[0], p_lo_center[1] - 6 * self.scale),
+                (p_lo_center[0], p_lo_center[1] + 1 * self.scale)
+            ], strength=0.35, width=0.70)
+
+        # 8. Philtrum columns connecting subnasale to Cupid's bow peaks (landmarks 37, 267)
+        nose_data = self.get_nose_data()
+        tip = nose_data["tip"]
+        subnasale = self.lm(2) or tip
+        p_cupid_l = self.lm(37)
+        p_cupid_r = self.lm(267)
+        if subnasale and p_cupid_l and p_cupid_r:
+            engine.quality.ghost_stroke([
+                (subnasale[0] - 3.5 * self.scale, subnasale[1] + 4 * self.scale),
+                p_cupid_l
+            ], strength=0.36, width=0.65)
+            engine.quality.ghost_stroke([
+                (subnasale[0] + 3.5 * self.scale, subnasale[1] + 4 * self.scale),
+                p_cupid_r
+            ], strength=0.36, width=0.65)
+
+        # 9. Labiomental groove guide (separating lower lip volume from chin)
+        if p_lo_center:
+            groove_y = p_lo_center[1] + 9 * self.scale
+            gw = 14.0 * self.scale
+            engine.quality.ghost_stroke([
+                (p_lo_center[0] - gw, groove_y),
+                (p_lo_center[0], groove_y + 2.5 * self.scale),
+                (p_lo_center[0] + gw, groove_y),
+            ], strength=0.42, width=0.75)
 
     def draw_hair_mass_contours(self, engine, rng: Optional[random.Random] = None) -> None:
         """
-        Stage 15: Hair mass, crown volume, and framing locks.
-        Dynamically rendered from the uploaded photograph without hardcoded formulas.
+        Stage 15: Volumetric hair mass, crown volume, ribbon flow, and framing locks.
+        Constructs:
+          - Volumetric cranial hair envelope (hair standing proud above the skull)
+          - Major hair mass block boundaries (crown bun / top mass, temple masses)
+          - Sinuous ribbon flow guidelines showing directional volume
+          - Organic photograph silhouette contours
         """
+        if rng is None:
+            rng = random.Random(1515)
+
+        # 1. Volumetric cranial envelope (hair sits 14-22px above cranium)
+        cranium = self.construction.get("loomis", {}).get("cranium", {})
+        center = cranium.get("center")
+        if center:
+            cx, cy = self.base.transform_point((center["x"], center["y"]))
+            rx = float(cranium.get("radiusX", 130)) * self.scale
+            ry = float(cranium.get("radiusY", 130)) * self.scale
+            r_avg = (rx + ry) * 0.5
+            hair_thick = 18.0 * self.scale
+
+            # Upper crown volume arc
+            crown_pts: List[Point] = []
+            for deg in range(195, 346, 10):
+                rad = math.radians(deg)
+                px = cx + (r_avg + hair_thick) * math.cos(rad)
+                py = cy + (r_avg + hair_thick * 1.15) * math.sin(rad)
+                crown_pts.append((px, py))
+            if len(crown_pts) >= 4:
+                engine.quality.pencil_stroke(self.spline(crown_pts, 4), strength=0.88, width=1.25, passes=2)
+
+            # 2. Volumetric ribbon flow lines (S-curves across the crown towards bun / shoulders)
+            for offset_ang in [-40, -20, 0, 20, 40]:
+                base_rad = math.radians(270 + offset_ang)
+                p_root = (cx + r_avg * 0.95 * math.cos(base_rad), cy + r_avg * 0.95 * math.sin(base_rad))
+                p_mid = (cx + (r_avg + hair_thick * 0.7) * math.cos(base_rad + 0.1), cy + (r_avg + hair_thick * 0.7) * math.sin(base_rad + 0.1))
+                p_crest = (cx + (r_avg + hair_thick * 1.1) * math.cos(base_rad + 0.2), cy + (r_avg + hair_thick * 1.1) * math.sin(base_rad + 0.2))
+                ribbon = _catmull_rom_chain([p_root, p_mid, p_crest], 4)
+                engine.quality.ghost_stroke(ribbon, strength=0.38, width=0.75)
+
+        # 3. Dynamic photo contours for exact hair silhouette & tumbling curls
         contours = self.extractor.get_hair_contours()
         for pts in contours:
             if len(pts) >= 2:
@@ -571,21 +734,85 @@ class LandmarkPortraitEngine:
 
     def draw_neck_and_garment(self, engine, structural_only: bool = False) -> None:
         """
-        Stage 16: Neck, shoulders, and garment/dress contours.
-        Dynamically extracted and rendered from the uploaded photograph.
+        Stage 16: Classical Loomis neck and shoulder construction.
+        - Cylindrical cervical column
+        - Sternocleidomastoid (SCM) muscle V-rhythm from mastoids to jugular notch
+        - Clavicle (collarbone) handlebar curves
+        - Trapezius muscle slope down to acromion shoulder tips
+        - Thyroid cartilage landmark
+        - Flowing garment drape over cylindrical volumes
         """
-        # 1. Anatomical neck cylinder guidelines connecting jaw to clavicles
         jaw_l = self.lm(172) or self.lm(58)
         jaw_r = self.lm(397) or self.lm(288)
         chin = self.lm(CHIN)
-        if jaw_l and jaw_r and chin:
-            neck_w = math.hypot(jaw_r[0] - jaw_l[0], jaw_r[1] - jaw_l[1]) * 0.40
-            neck_cx = (jaw_l[0] + jaw_r[0]) * 0.5
-            neck_bot_y = chin[1] + neck_w * 0.90
-            engine.quality.ghost_stroke([jaw_l, (neck_cx - neck_w * 0.35, neck_bot_y)], strength=0.28, width=0.75)
-            engine.quality.ghost_stroke([jaw_r, (neck_cx + neck_w * 0.35, neck_bot_y)], strength=0.28, width=0.75)
 
-        # 2. Garment / dress contours from photograph
+        if jaw_l and jaw_r and chin:
+            neck_cx = (jaw_l[0] + jaw_r[0]) * 0.5
+            neck_w = math.hypot(jaw_r[0] - jaw_l[0], jaw_r[1] - jaw_l[1]) * 0.44
+            neck_len = neck_w * 1.05
+            pit_y = chin[1] + neck_len  # Suprasternal / jugular notch
+
+            # 1. Cylindrical cervical column guidelines
+            engine.quality.ghost_stroke([jaw_l, (neck_cx - neck_w * 0.50, pit_y + 10 * self.scale)], strength=0.35, width=0.80)
+            engine.quality.ghost_stroke([jaw_r, (neck_cx + neck_w * 0.50, pit_y + 10 * self.scale)], strength=0.35, width=0.80)
+
+            # 2. Sternocleidomastoid (SCM) muscle V-rhythm (mastoids to jugular pit)
+            mastoid_l = (jaw_l[0] - 8 * self.scale, jaw_l[1] - 4 * self.scale)
+            mastoid_r = (jaw_r[0] + 8 * self.scale, jaw_r[1] - 4 * self.scale)
+            pit_l = (neck_cx - 6 * self.scale, pit_y)
+            pit_r = (neck_cx + 6 * self.scale, pit_y)
+
+            scm_left = _catmull_rom_chain([mastoid_l, (neck_cx - neck_w * 0.28, chin[1] + neck_len * 0.5), pit_l], 5)
+            scm_right = _catmull_rom_chain([mastoid_r, (neck_cx + neck_w * 0.28, chin[1] + neck_len * 0.5), pit_r], 5)
+
+            engine.quality.construction_stroke(scm_left, strength=0.55, width=0.88)
+            engine.quality.construction_stroke(scm_right, strength=0.55, width=0.88)
+
+            # 3. Suprasternal / jugular notch (pit of the neck)
+            engine.quality.ghost_stroke([
+                (neck_cx - 8 * self.scale, pit_y - 2 * self.scale),
+                (neck_cx, pit_y + 3 * self.scale),
+                (neck_cx + 8 * self.scale, pit_y - 2 * self.scale)
+            ], strength=0.45, width=0.80)
+
+            # 4. Clavicles (collarbones) - horizontal handlebar rhythm
+            clavicle_w = neck_w * 1.55
+            clav_left = _catmull_rom_chain([
+                pit_l,
+                (neck_cx - clavicle_w * 0.5, pit_y + 2 * self.scale),
+                (neck_cx - clavicle_w, pit_y + 8 * self.scale)
+            ], 5)
+            clav_right = _catmull_rom_chain([
+                pit_r,
+                (neck_cx + clavicle_w * 0.5, pit_y + 2 * self.scale),
+                (neck_cx + clavicle_w, pit_y + 8 * self.scale)
+            ], 5)
+            engine.quality.ghost_stroke(clav_left, strength=0.40, width=0.80)
+            engine.quality.ghost_stroke(clav_right, strength=0.40, width=0.80)
+
+            # 5. Trapezius muscle slope (neck to shoulder tips)
+            trap_left = _catmull_rom_chain([
+                (jaw_l[0] - 12 * self.scale, jaw_l[1] + 10 * self.scale),
+                (neck_cx - clavicle_w * 0.75, pit_y - 8 * self.scale),
+                (neck_cx - clavicle_w * 1.25, pit_y + 22 * self.scale)
+            ], 5)
+            trap_right = _catmull_rom_chain([
+                (jaw_r[0] + 12 * self.scale, jaw_r[1] + 10 * self.scale),
+                (neck_cx + clavicle_w * 0.75, pit_y - 8 * self.scale),
+                (neck_cx + clavicle_w * 1.25, pit_y + 22 * self.scale)
+            ], 5)
+            engine.quality.ghost_stroke(trap_left, strength=0.35, width=0.75)
+            engine.quality.ghost_stroke(trap_right, strength=0.35, width=0.75)
+
+            # 6. Thyroid cartilage landmark (centerline notch)
+            larynx_y = chin[1] + neck_len * 0.38
+            engine.quality.ghost_stroke([
+                (neck_cx - 4 * self.scale, larynx_y),
+                (neck_cx, larynx_y + 3 * self.scale),
+                (neck_cx + 4 * self.scale, larynx_y)
+            ], strength=0.35, width=0.65)
+
+        # 7. Garment / dress contours from photograph
         contours = (
             self.extractor.get_major_garment_contours()
             if structural_only
@@ -604,8 +831,11 @@ class LandmarkPortraitEngine:
 
     def draw_cheek_forehead_contours(self, engine, strength: float = 0.5) -> None:
         """
-        Stage 13: Cheek and forehead planar contours.
-        Zygomatic arches, temporal ridge lines, mental protuberance (chin ball), and subtle nasolabial fold guides.
+        Stage 13: Classical Loomis planar landmarks of the skull.
+        - Zygomatic arches connecting brow tail to malar apex and angling to ear tragus
+        - Temporal ridge curves ascending from brow to cranial side disc
+        - Mental protuberance (chin ball & front plane wedge)
+        - Nasolabial fold rhythm arcs
         """
         lb_tail = self.lm(70) or self.lm(46)
         rb_tail = self.lm(300) or self.lm(276)
@@ -613,40 +843,55 @@ class LandmarkPortraitEngine:
         cheek_r = self.lm(454) or self.lm(356)
         chin = self.lm(CHIN)
 
-        # 1. Zygomatic cheekbone arch planes
+        # 1. Zygomatic cheekbone arch planes (brow tail -> malar apex -> ear tragus)
         if lb_tail and cheek_l:
-            engine.quality.ghost_stroke([lb_tail, cheek_l], strength=0.35 * strength, width=0.75)
+            engine.quality.ghost_stroke([lb_tail, cheek_l], strength=0.40 * strength, width=0.80)
         if rb_tail and cheek_r:
-            engine.quality.ghost_stroke([rb_tail, cheek_r], strength=0.35 * strength, width=0.75)
+            engine.quality.ghost_stroke([rb_tail, cheek_r], strength=0.40 * strength, width=0.80)
 
+        # Malar apex to tragus / gonion angle
+        jaw_angle_l = self.lm(172) or self.lm(58)
+        jaw_angle_r = self.lm(397) or self.lm(288)
+        if cheek_l and jaw_angle_l:
+            engine.quality.ghost_stroke([cheek_l, jaw_angle_l], strength=0.32 * strength, width=0.70)
+        if cheek_r and jaw_angle_r:
+            engine.quality.ghost_stroke([cheek_r, jaw_angle_r], strength=0.32 * strength, width=0.70)
+
+        # Front-to-side plane break from cheekbone to chin
         if cheek_l and chin:
-            jaw_angle_l = self.lm(172) or self.lm(58)
-            if jaw_angle_l:
-                engine.quality.ghost_stroke([cheek_l, jaw_angle_l, chin], strength=0.30 * strength, width=0.70)
+            engine.quality.ghost_stroke([cheek_l, chin], strength=0.28 * strength, width=0.68)
         if cheek_r and chin:
-            jaw_angle_r = self.lm(397) or self.lm(288)
-            if jaw_angle_r:
-                engine.quality.ghost_stroke([cheek_r, jaw_angle_r, chin], strength=0.30 * strength, width=0.70)
+            engine.quality.ghost_stroke([cheek_r, chin], strength=0.28 * strength, width=0.68)
 
-        # 2. Temporal crest / forehead plane lines (brow up to hairline)
+        # 2. Temporal crest / frontal bone plane curves (brow tail up and back across cranium)
         hl_l = self.lm(21) or self.lm(54)
         hl_r = self.lm(251) or self.lm(284)
         if lb_tail and hl_l:
-            engine.quality.ghost_stroke([lb_tail, hl_l], strength=0.30 * strength, width=0.65)
+            engine.quality.ghost_stroke([lb_tail, hl_l], strength=0.35 * strength, width=0.70)
         if rb_tail and hl_r:
-            engine.quality.ghost_stroke([rb_tail, hl_r], strength=0.30 * strength, width=0.65)
+            engine.quality.ghost_stroke([rb_tail, hl_r], strength=0.35 * strength, width=0.70)
 
-        # 3. Chin ball (mental protuberance)
+        # 3. Mental protuberance (chin ball / front wedge)
         if chin:
-            chin_r = 14.0 * self.scale
+            chin_r = 13.0 * self.scale
+            # Chin ball sphere
             engine.quality.ghost_stroke(
-                _circle_pts((chin[0], chin[1] - chin_r * 0.7), chin_r, 20),
-                strength=0.32 * strength,
-                width=0.70,
+                _circle_pts((chin[0], chin[1] - chin_r * 0.65), chin_r, 20),
+                strength=0.36 * strength,
+                width=0.75,
                 closed=True,
             )
+            # Chin trapezoidal front plane wedge
+            cw = 11.0 * self.scale
+            engine.quality.ghost_stroke([
+                (chin[0] - cw, chin[1] - chin_r * 1.1),
+                (chin[0] + cw, chin[1] - chin_r * 1.1),
+                (chin[0] + cw * 0.7, chin[1]),
+                (chin[0] - cw * 0.7, chin[1]),
+                (chin[0] - cw, chin[1] - chin_r * 1.1)
+            ], strength=0.30 * strength, width=0.65)
 
-        # 4. Subtle nasolabial fold guides
+        # 4. Nasolabial fold rhythm arcs
         nose_data = self.get_nose_data()
         lip_data = self.get_lip_data()
         nl = nose_data.get("nostril_l")
@@ -659,21 +904,24 @@ class LandmarkPortraitEngine:
                 (nl[0] - 6 * self.scale, (nl[1] + ml[1]) * 0.5),
                 (ml[0] - 4 * self.scale, ml[1]),
             ], 4)
-            engine.quality.ghost_stroke(fold_l, strength=0.25 * strength, width=0.60)
+            engine.quality.ghost_stroke(fold_l, strength=0.30 * strength, width=0.65)
         if nr and mr:
             fold_r = _catmull_rom_chain([
                 (nr[0] + 3 * self.scale, nr[1] + 2 * self.scale),
                 (nr[0] + 6 * self.scale, (nr[1] + mr[1]) * 0.5),
                 (mr[0] + 4 * self.scale, mr[1]),
             ], 4)
-            engine.quality.ghost_stroke(fold_r, strength=0.25 * strength, width=0.60)
+            engine.quality.ghost_stroke(fold_r, strength=0.30 * strength, width=0.65)
 
     def draw_ears_and_earrings(self, engine, strength: float = 0.90) -> None:
         """
-        Stage 14: Ear construction.
-        Anatomical ear placement (helix, antihelix, concha, lobule).
-        Respects perspective: in 3/4 and profile views, the far ear is occluded!
-        Does not fabricate synthetic jewelry.
+        Stage 14: Classical Loomis ear construction.
+        - Vertically bounded strictly between brow line and nose base
+        - C-shaped outer helix rim
+        - Inner antihelix with superior crus fork and triangular fossa
+        - Concha bowl hollow
+        - Tragus flap, antitragus, and lobule (earlobe)
+        - Perspective awareness: far ear is occluded in 3/4 and profile poses
         """
         pose = self.analysis.get("pose", {})
         yaw = float(pose.get("yaw", 0.0) or 0.0)
@@ -681,51 +929,90 @@ class LandmarkPortraitEngine:
         l_ear = self.lm(127) or self.lm(234)
         r_ear = self.lm(356) or self.lm(454)
 
+        # Loomis proportion alignment levels: Brow line (top) and Nose base (bottom)
+        lb = self.lm(107)
+        rb = self.lm(336)
+        brow_y = (lb[1] + rb[1]) * 0.5 if (lb and rb) else (l_ear[1] - 22 * self.scale if l_ear else 350.0)
+        nose_base = self.lm(2)
+        nose_base_y = nose_base[1] if nose_base else (l_ear[1] + 38 * self.scale if l_ear else 460.0)
+
         ears_to_draw = []
-        if yaw > 15.0:
-            # 3/4 or profile looking right: only near ear (left side of head / viewer's left) is visible!
-            # Far ear is on the back side of the head and occluded.
+        if yaw > 14.0:
+            # 3/4 or profile looking right: only near ear (viewer's left) is visible
             if l_ear:
-                ears_to_draw.append((l_ear, -1))
-        elif yaw < -15.0:
-            # 3/4 or profile looking left: only near ear (right side of head / viewer's right) is visible!
+                ears_to_draw.append((l_ear, -1, "left"))
+        elif yaw < -14.0:
+            # 3/4 or profile looking left: only near ear (viewer's right) is visible
             if r_ear:
-                ears_to_draw.append((r_ear, 1))
+                ears_to_draw.append((r_ear, 1, "right"))
         else:
             # Frontal view: both ears if detected
             if l_ear:
-                ears_to_draw.append((l_ear, -1))
+                ears_to_draw.append((l_ear, -1, "left"))
             if r_ear:
-                ears_to_draw.append((r_ear, 1))
+                ears_to_draw.append((r_ear, 1, "right"))
 
-        for ear_pt, sign in ears_to_draw:
+        for ear_pt, sign, side_name in ears_to_draw:
             if not ear_pt:
                 continue
-            ear_top = (ear_pt[0] + sign * 14 * self.scale, ear_pt[1] - 22 * self.scale)
-            ear_outer = (ear_pt[0] + sign * 26 * self.scale, ear_pt[1] + 2 * self.scale)
-            ear_mid = (ear_pt[0] + sign * 24 * self.scale, ear_pt[1] + 22 * self.scale)
-            ear_lobe = (ear_pt[0] + sign * 12 * self.scale, ear_pt[1] + 40 * self.scale)
-            ear_base = (ear_pt[0] + sign * 4 * self.scale, ear_pt[1] + 34 * self.scale)
 
-            # 1. Outer helix rim
+            # Ear vertical span: aligned with brow and nose base
+            ear_top_y = brow_y
+            ear_bot_y = nose_base_y
+            ear_h = max(ear_bot_y - ear_top_y, 40 * self.scale)
+            ear_w = ear_h * 0.32
+
+            ear_root_x = ear_pt[0]
+            ear_top = (ear_root_x + sign * ear_w * 0.45, ear_top_y)
+            ear_outer = (ear_root_x + sign * ear_w, ear_top_y + ear_h * 0.32)
+            ear_mid = (ear_root_x + sign * ear_w * 0.88, ear_top_y + ear_h * 0.60)
+            ear_lobe = (ear_root_x + sign * ear_w * 0.45, ear_bot_y)
+            ear_base = (ear_root_x + sign * ear_w * 0.15, ear_bot_y - ear_h * 0.12)
+
+            # Loomis alignment construction guide ticks (connecting cheek/cranium margin to ear top & bottom)
+            engine.quality.ghost_stroke([
+                (ear_root_x - sign * 12 * self.scale, ear_top_y),
+                (ear_top[0] + sign * 2 * self.scale, ear_top_y)
+            ], strength=0.20 * strength, width=0.55)
+            engine.quality.ghost_stroke([
+                (ear_root_x - sign * 12 * self.scale, ear_bot_y),
+                (ear_lobe[0] + sign * 2 * self.scale, ear_bot_y)
+            ], strength=0.20 * strength, width=0.55)
+
+            # 1. Outer C-shaped helix rim
             helix = _catmull_rom_chain([ear_pt, ear_top, ear_outer, ear_mid, ear_lobe, ear_base], 6)
             engine.quality.structural_stroke(helix, strength=0.88 * strength, width=1.30)
 
-            # 2. Concha bowl
-            concha = _catmull_rom_chain([
-                (ear_top[0] - sign * 5 * self.scale, ear_top[1] + 10 * self.scale),
-                (ear_outer[0] - sign * 7 * self.scale, ear_outer[1] + 5 * self.scale),
-                (ear_mid[0] - sign * 8 * self.scale, ear_mid[1] + 2 * self.scale),
+            # 2. Inner antihelix ridge with superior crus fork
+            antihelix_main = _catmull_rom_chain([
+                (ear_outer[0] - sign * ear_w * 0.22, ear_top_y + ear_h * 0.30),
+                (ear_mid[0] - sign * ear_w * 0.25, ear_top_y + ear_h * 0.55),
+                (ear_lobe[0] - sign * ear_w * 0.10, ear_bot_y - ear_h * 0.18),
             ], 4)
-            engine.quality.construction_stroke(concha, strength=0.65 * strength, width=0.90)
+            engine.quality.construction_stroke(antihelix_main, strength=0.62 * strength, width=0.88)
 
-            # 3. Inner antihelix ridge
-            antihelix = _catmull_rom_chain([
-                (ear_top[0] - sign * 1 * self.scale, ear_top[1] + 8 * self.scale),
-                (ear_outer[0] - sign * 4 * self.scale, ear_outer[1] + 10 * self.scale),
-                (ear_lobe[0] - sign * 2 * self.scale, ear_lobe[1] - 5 * self.scale),
+            # Superior crus (fork pointing toward top apex)
+            crus_pts = [
+                (ear_outer[0] - sign * ear_w * 0.22, ear_top_y + ear_h * 0.30),
+                (ear_top[0] - sign * ear_w * 0.15, ear_top_y + ear_h * 0.15)
+            ]
+            engine.quality.ghost_stroke(crus_pts, strength=0.40 * strength, width=0.70)
+
+            # 3. Concha bowl hollow
+            concha = _catmull_rom_chain([
+                (ear_root_x + sign * ear_w * 0.20, ear_top_y + ear_h * 0.38),
+                (ear_root_x + sign * ear_w * 0.52, ear_top_y + ear_h * 0.45),
+                (ear_root_x + sign * ear_w * 0.32, ear_top_y + ear_h * 0.65),
             ], 4)
-            engine.quality.ghost_stroke(antihelix, strength=0.45 * strength, width=0.75)
+            engine.quality.structural_stroke(concha, strength=0.72 * strength, width=1.0)
+
+            # 4. Tragus flap (protective nodule over ear canal)
+            tragus_pts = [
+                (ear_root_x, ear_top_y + ear_h * 0.42),
+                (ear_root_x + sign * ear_w * 0.22, ear_top_y + ear_h * 0.48),
+                (ear_root_x + sign * ear_w * 0.08, ear_top_y + ear_h * 0.55),
+            ]
+            engine.quality.structural_stroke(tragus_pts, strength=0.78 * strength, width=1.05)
 
     def draw_photo_contours(self, engine, img_path: Optional[Any] = None) -> None:
         """

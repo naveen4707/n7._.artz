@@ -146,25 +146,44 @@ class Stage10EyebrowRenderer:
         upper = brow_data["upper"]
 
         # 1. Structural lower contour (core definition of eyebrow arch)
-        engine.quality.structural_stroke(lower, strength=0.82, width=1.15)
+        engine.quality.structural_stroke(lower, strength=0.84, width=1.20)
 
         # 2. Upper arch contour following the supraorbital bone
-        engine.quality.construction_stroke(upper, strength=0.60, width=0.90)
+        engine.quality.construction_stroke(upper, strength=0.65, width=0.92)
 
-        # 3. Outer tail clean anatomical convergence
-        engine.quality.structural_stroke([upper[0], lower[0]], strength=0.70, width=0.95)
+        # 3. Outer tail clean anatomical convergence (tapering to temporal crest)
+        engine.quality.structural_stroke([upper[0], lower[0]], strength=0.72, width=0.95)
 
-        # 4. Inner head closure guide
-        engine.quality.construction_stroke([upper[4], lower[4]], strength=0.45, width=0.75)
+        # 4. Inner head closure guide (ascending from glabella keystone)
+        engine.quality.construction_stroke([upper[4], lower[4]], strength=0.48, width=0.75)
 
-        # 5. Central brow ridge flow spine (longitudinal bone crest)
+        # 5. Loomis 3-plane division marks: Head (points 3-4), Body (points 1-3), Tail (points 0-1)
+        if len(lower) >= 4 and len(upper) >= 4:
+            # Head-to-body plane break guide
+            engine.quality.ghost_stroke([lower[3], upper[3]], strength=0.22, width=0.60)
+            # Body-to-tail arch apex break guide
+            engine.quality.ghost_stroke([lower[1], upper[1]], strength=0.22, width=0.60)
+
+        # 6. Central brow ridge flow spine (longitudinal bone crest) and interior flow
         mid_spine: List[Point] = []
-        for i in range(5):
+        for i in range(len(lower)):
             mid_spine.append((
                 (lower[i][0] + upper[i][0]) * 0.5,
                 (lower[i][1] + upper[i][1]) * 0.5,
             ))
-        engine.quality.ghost_stroke(mid_spine, strength=0.30, width=0.70)
+        engine.quality.ghost_stroke(mid_spine, strength=0.36, width=0.72)
+
+        # Subtle upper and lower volume flow rhythms
+        flow_up: List[Point] = [
+            (0.75 * u[0] + 0.25 * l[0], 0.75 * u[1] + 0.25 * l[1])
+            for u, l in zip(upper, lower)
+        ]
+        flow_lo: List[Point] = [
+            (0.25 * u[0] + 0.75 * l[0], 0.25 * u[1] + 0.75 * l[1])
+            for u, l in zip(upper, lower)
+        ]
+        engine.quality.ghost_stroke(flow_up, strength=0.20, width=0.55)
+        engine.quality.ghost_stroke(flow_lo, strength=0.20, width=0.55)
 
     def render(self) -> Image.Image:
         """

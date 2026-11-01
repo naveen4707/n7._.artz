@@ -344,7 +344,45 @@ class Stage8EyeConstruction:
             return
 
         # --------------------------------------------------------
-        # 4. Eyeball cross construction (Open eyes only)
+        # 4. Corneal Curvature Dome & 3D Eyelid Wrapping Guide
+        # --------------------------------------------------------
+        yaw = float(self.construction.get("pose", {}).get("yaw", 0.0) or 0.0)
+        cornea_dx = math.sin(math.radians(yaw)) * (width * 0.06)
+        cornea_center = (center[0] + cornea_dx, center[1])
+        cornea_rx = max(width * 0.24, 3.0)
+        cornea_ry = max(height * 0.44, 2.5)
+        cornea_dome = rotate_ellipse(
+            cornea_center,
+            cornea_rx,
+            cornea_ry,
+            eye_plane_angle,
+            samples=48,
+        )
+        engine.quality.ghost_stroke(
+            cornea_dome,
+            strength=0.22,
+            width=0.64,
+            closed=True,
+        )
+
+        # 3D Eyelid wrapping great-circle arc (showing lid wrapping over spherical eyeball)
+        if len(upper) >= 2:
+            wrap_pts = []
+            nx = math.sin(math.radians(eye_plane_angle))
+            ny = -math.cos(math.radians(eye_plane_angle))
+            for i, p in enumerate(upper):
+                t = i / max(1, len(upper) - 1)
+                arc_lift = (eyeball_ry * 0.25) * math.sin(t * math.pi)
+                wrap_pts.append((p[0] + nx * arc_lift, p[1] + ny * arc_lift))
+            engine.quality.ghost_stroke(
+                wrap_pts,
+                strength=0.26,
+                width=0.66,
+                closed=False,
+            )
+
+        # --------------------------------------------------------
+        # 5. Eyeball cross construction (Open eyes only)
         # --------------------------------------------------------
         horizontal_start, horizontal_end = line_endpoints(
             center,
@@ -373,7 +411,7 @@ class Stage8EyeConstruction:
         )
 
         # --------------------------------------------------------
-        # 5. Iris construction (Open eyes only)
+        # 6. Iris construction (Open eyes only)
         # --------------------------------------------------------
         iris_rx = max(
             min(width * 0.19, eyeball_rx * 0.42),
@@ -483,6 +521,20 @@ class Stage8EyeConstruction:
         )
 
         return image
+
+    def save(self, output_path=None):
+        """Render and save Stage 8 PNG image."""
+        if output_path is None:
+            output_path = DEFAULT_OUTPUT
+
+        output_path = Path(output_path)
+        if not output_path.is_absolute():
+            output_path = Path.cwd() / output_path
+
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        image = self.render()
+        image.save(output_path, quality=95)
+        return output_path
 
 
 def parse_arguments():

@@ -121,39 +121,8 @@ class Stage12MouthRenderer:
         self.lpe.draw_nose(stroke_engine)
 
         # 7. Focus: Refined Mouth and Lip Architecture (Stage 12)
-        # Sinuous line of closure, Cupid's bow, lower lip curve, corner nodes
+        # Sinuous line of closure, Cupid's bow, dental muzzle cylinder, 5 lip cushions, corner nodes, philtrum & labiomental groove
         self.lpe.draw_lips(stroke_engine)
-
-        # Philtrum guide lines connecting subnasale to Cupid's bow peaks
-        nose_data = self.lpe.get_nose_data()
-        tip = nose_data["tip"]
-        lip_data = self.lpe.get_lip_data()
-        uo = lip_data.get("upper_outer")
-        if tip and uo and len(uo) >= 6:
-            p_center = uo[len(uo) // 2]
-            quality.ghost_stroke(
-                [(tip[0] - 4 * self.scale, tip[1] + 6 * self.scale),
-                 (p_center[0] - 3 * self.scale, p_center[1] - 3 * self.scale)],
-                strength=0.38, width=0.65
-            )
-            quality.ghost_stroke(
-                [(tip[0] + 4 * self.scale, tip[1] + 6 * self.scale),
-                 (p_center[0] + 3 * self.scale, p_center[1] - 3 * self.scale)],
-                strength=0.38, width=0.65
-            )
-
-        # Labiomental groove guide (soft shadow line below bottom lip)
-        lo = lip_data.get("lower_outer")
-        chin = self.lpe.get_chin()
-        if lo and chin and len(lo) >= 4:
-            lo_mid = lo[len(lo) // 2]
-            groove_y = lo_mid[1] + 8 * self.scale
-            quality.ghost_stroke(
-                [(lo_mid[0] - 12 * self.scale, groove_y),
-                 (lo_mid[0], groove_y + 2 * self.scale),
-                 (lo_mid[0] + 12 * self.scale, groove_y)],
-                strength=0.45, width=0.75
-            )
 
         # 8. Standard Stage Header & Footer
         quality.draw.text((40, 30), f"LOOMIS AI | STAGE {STAGE_NUMBER:02d}", fill=TITLE)

@@ -221,6 +221,72 @@ class TestLoomisPipelineAndStages(unittest.TestCase):
             self.assertIsInstance(img, Image.Image, f"Stage {s} must render a PIL Image")
             self.assertEqual(img.size, (1000, 1200))
 
+    def test_11_milestone_2_feature_and_volumetric_construction(self):
+        """
+        Verify Milestone 2 anatomical feature construction (Stages 8-14)
+        and volumetric hair mass / neck construction (Stages 15-16):
+        - Stage 8: Eyeball sphere, corneal bulge & eyelid wrapping guide
+        - Stage 9: Eyelid thickness margin plane & tear duct
+        - Stage 10: 3-part Loomis eyebrow mass & glabella keystone
+        - Stage 11: 5-plane nose construction (dorsal ridge, side planes, ball, alar wings, underplane)
+        - Stage 12: Dental muzzle barrel arc & 5-cushion lip architecture
+        - Stage 13: Zygomatic arch, temporal crest, and mental protuberance
+        - Stage 14: Ear construction bounded between brow level and nose base
+        - Stage 15: Volumetric cranial hair envelope, ribbon flow lines, and hairline boundary
+        - Stage 16: Cervical cylinder, sternocleidomastoid (SCM) V-rhythm, clavicles, trapezius slope
+        - HandDrawnLoomisRenderer renders stages 8 through 16 to valid 1000x1200 images
+        """
+        from stage_08_eye_construction import Stage8EyeConstruction
+        from stage_09_eye_eyelid_construction import Stage09EyeRenderer
+        from stage_10_eyebrow_construction import Stage10EyebrowRenderer
+        from stage_11_nose_construction import Stage11NoseRenderer
+        from stage_12_mouth_construction import Stage12MouthRenderer
+        from stage_13_cheek_forehead_contours import Stage13CheekForeheadRenderer
+        from stage_14_ear_construction import Stage14EarRenderer
+        from stage_15_hairline_hair_mass import Stage15HairlineHairMassRenderer
+        from stage_16_neck_construction import Stage16NeckRenderer
+        from landmark_portrait_engine import LandmarkPortraitEngine
+
+        ref_img = AI_ENGINE_DIR / "input" / "reference.jpg"
+        lpe = LandmarkPortraitEngine(self.construction, self.analysis, img_path=ref_img)
+
+        # 1. Feature data extraction
+        eye_r = lpe.get_eye_data("right")
+        eye_l = lpe.get_eye_data("left")
+        self.assertTrue(bool(eye_r), "Right eye data must be extracted")
+        self.assertTrue(bool(eye_l), "Left eye data must be extracted")
+
+        brow_r = lpe.get_brow_data("right")
+        self.assertIn("lower", brow_r)
+        self.assertIn("upper", brow_r)
+
+        nose_data = lpe.get_nose_data()
+        self.assertIsNotNone(nose_data.get("tip"))
+        self.assertIsNotNone(nose_data.get("bridge"))
+
+        lip_data = lpe.get_lip_data()
+        self.assertIsNotNone(lip_data.get("closure"))
+        self.assertIsNotNone(lip_data.get("upper_outer"))
+        self.assertIsNotNone(lip_data.get("lower_outer"))
+
+        # 2. Render each Milestone 2 stage and verify valid 1000x1200 image outputs
+        stages_to_test = [
+            (8, Stage8EyeConstruction(self.construction)),
+            (9, Stage09EyeRenderer(self.construction)),
+            (10, Stage10EyebrowRenderer(self.construction)),
+            (11, Stage11NoseRenderer(self.construction)),
+            (12, Stage12MouthRenderer(self.construction, self.analysis)),
+            (13, Stage13CheekForeheadRenderer(self.construction, self.analysis)),
+            (14, Stage14EarRenderer(self.construction, self.analysis)),
+            (15, Stage15HairlineHairMassRenderer(self.construction, self.analysis, img_path=ref_img)),
+            (16, Stage16NeckRenderer(self.construction, self.analysis, img_path=ref_img)),
+        ]
+
+        for num, renderer in stages_to_test:
+            img = renderer.render()
+            self.assertIsInstance(img, Image.Image, f"Stage {num} must render a PIL Image")
+            self.assertEqual(img.size, (1000, 1200), f"Stage {num} must be 1000x1200")
+
 
 if __name__ == "__main__":
     unittest.main()

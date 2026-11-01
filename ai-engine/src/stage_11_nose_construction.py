@@ -129,14 +129,22 @@ class Stage11NoseRenderer:
         nose_w = float(self.nose.get("width", 65.0)) * scale
         tip_r = max(nose_w * 0.22, 5.0)
 
-        # 1. Central dorsal nasal ridge (spine)
-        if len(bridge_pts) >= 2:
-            engine.quality.structural_stroke(bridge_pts, strength=0.75, width=1.0)
+        # 1. Glabella Keystone Root Transition
+        keystone_raw = self.loomis.get("nosePlane", {}).get("keystone", [])
+        if len(keystone_raw) >= 4:
+            ks_pts = [self.base.transform_point(base_point_xy(p)) for p in keystone_raw]
+            ks_pts = [p for p in ks_pts if p is not None]
+            if len(ks_pts) >= 4:
+                engine.quality.ghost_stroke(ks_pts + [ks_pts[0]], strength=0.25, width=0.68)
 
-            # 2. Lateral side planes of the nasal bridge (delicate parallel guides)
+        # 2. Central dorsal nasal ridge (spine)
+        if len(bridge_pts) >= 2:
+            engine.quality.structural_stroke(bridge_pts, strength=0.78, width=1.10)
+
+            # 3. Lateral side planes of the nasal bridge (delicate parallel guides)
             bridge_l: List[Point] = []
             bridge_r: List[Point] = []
-            bw_half = nose_w * 0.15
+            bw_half = nose_w * 0.16
             cos_a = math.cos(math.radians(alpha))
             sin_a = math.sin(math.radians(alpha))
 
@@ -144,22 +152,28 @@ class Stage11NoseRenderer:
                 bridge_l.append((p[0] - bw_half * cos_a, p[1] - bw_half * sin_a))
                 bridge_r.append((p[0] + bw_half * cos_a, p[1] + bw_half * sin_a))
 
-            engine.quality.ghost_stroke(bridge_l, strength=0.22, width=0.65)
-            engine.quality.ghost_stroke(bridge_r, strength=0.22, width=0.65)
+            engine.quality.ghost_stroke(bridge_l, strength=0.26, width=0.65)
+            engine.quality.ghost_stroke(bridge_r, strength=0.26, width=0.65)
 
-        # 3. Ball of the nose (spherical tip construction)
+        # 4. Ball of the nose (spherical tip construction)
         ball_pts = rotate_ellipse(tip_pt, tip_r, tip_r * 0.92, alpha, samples=36)
-        engine.quality.construction_stroke(ball_pts, strength=0.38, width=0.80, closed=True)
+        engine.quality.construction_stroke(ball_pts, strength=0.42, width=0.82, closed=True)
 
-        # 4. Alar wings (nostril flares)
+        # 5. Alar wings (nostril flares)
         if len(left_c) >= 2:
-            engine.quality.structural_stroke(left_c, strength=0.75, width=1.05)
+            engine.quality.structural_stroke(left_c, strength=0.76, width=1.08)
         if len(right_c) >= 2:
-            engine.quality.structural_stroke(right_c, strength=0.75, width=1.05)
+            engine.quality.structural_stroke(right_c, strength=0.76, width=1.08)
 
-        # 5. Under-plane of the nose
-        if len(lower_pts) >= 2:
-            engine.quality.structural_stroke(lower_pts, strength=0.65, width=0.90)
+        # 6. Under-plane trapezoid of the nose
+        under_plane_raw = self.loomis.get("nosePlane", {}).get("underPlane", [])
+        if len(under_plane_raw) >= 3:
+            up_pts = [self.base.transform_point(base_point_xy(p)) for p in under_plane_raw]
+            up_pts = [p for p in up_pts if p is not None]
+            if len(up_pts) >= 3:
+                engine.quality.ghost_stroke(up_pts + [up_pts[0]], strength=0.30, width=0.70)
+        elif len(lower_pts) >= 2:
+            engine.quality.structural_stroke(lower_pts, strength=0.68, width=0.92)
 
         # 6. Nostril openings (clean dark graphite accents)
         if len(left_c) >= 3:
