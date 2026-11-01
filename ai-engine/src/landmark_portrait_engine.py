@@ -709,24 +709,24 @@ class LandmarkPortraitEngine:
                 r_avg = (rx + ry) * 0.5
                 hair_thick = 18.0 * self.scale
 
-            # Upper crown volume arc
-            crown_pts: List[Point] = []
-            for deg in range(195, 346, 10):
-                rad = math.radians(deg)
-                px = cx + (r_avg + hair_thick) * math.cos(rad)
-                py = cy + (r_avg + hair_thick * 1.15) * math.sin(rad)
-                crown_pts.append((px, py))
-            if len(crown_pts) >= 4:
-                engine.quality.pencil_stroke(self.spline(crown_pts, 4), strength=0.88, width=1.25, passes=2)
+                # Upper crown volume arc
+                crown_pts: List[Point] = []
+                for deg in range(195, 346, 10):
+                    rad = math.radians(deg)
+                    px = cx + (r_avg + hair_thick) * math.cos(rad)
+                    py = cy + (r_avg + hair_thick * 1.15) * math.sin(rad)
+                    crown_pts.append((px, py))
+                if len(crown_pts) >= 4:
+                    engine.quality.pencil_stroke(self.spline(crown_pts, 4), strength=0.88, width=1.25, passes=2)
 
-            # 2. Volumetric ribbon flow lines (S-curves across the crown towards bun / shoulders)
-            for offset_ang in [-40, -20, 0, 20, 40]:
-                base_rad = math.radians(270 + offset_ang)
-                p_root = (cx + r_avg * 0.95 * math.cos(base_rad), cy + r_avg * 0.95 * math.sin(base_rad))
-                p_mid = (cx + (r_avg + hair_thick * 0.7) * math.cos(base_rad + 0.1), cy + (r_avg + hair_thick * 0.7) * math.sin(base_rad + 0.1))
-                p_crest = (cx + (r_avg + hair_thick * 1.1) * math.cos(base_rad + 0.2), cy + (r_avg + hair_thick * 1.1) * math.sin(base_rad + 0.2))
-                ribbon = _catmull_rom_chain([p_root, p_mid, p_crest], 4)
-                engine.quality.ghost_stroke(ribbon, strength=0.38, width=0.75)
+                # 2. Volumetric ribbon flow lines (S-curves across the crown towards bun / shoulders)
+                for offset_ang in [-40, -20, 0, 20, 40]:
+                    base_rad = math.radians(270 + offset_ang)
+                    p_root = (cx + r_avg * 0.95 * math.cos(base_rad), cy + r_avg * 0.95 * math.sin(base_rad))
+                    p_mid = (cx + (r_avg + hair_thick * 0.7) * math.cos(base_rad + 0.1), cy + (r_avg + hair_thick * 0.7) * math.sin(base_rad + 0.1))
+                    p_crest = (cx + (r_avg + hair_thick * 1.1) * math.cos(base_rad + 0.2), cy + (r_avg + hair_thick * 1.1) * math.sin(base_rad + 0.2))
+                    ribbon = _catmull_rom_chain([p_root, p_mid, p_crest], 4)
+                    engine.quality.ghost_stroke(ribbon, strength=0.38, width=0.75)
 
         # 3. Dynamic photo contours for exact hair silhouette & tumbling curls
         contours = self.extractor.get_hair_contours()
@@ -1270,27 +1270,27 @@ class LandmarkPortraitEngine:
                 r_avg = (rx + ry) * 0.5
                 hair_thick = 20.0 * self.scale
 
-            # 1. Multi-pass directional crown sweeps from forehead part down towards temples and back
-            for ang_deg in range(190, 351, 6):
-                base_rad = math.radians(ang_deg)
-                p0 = (cx + (r_avg * 0.88 + rng.uniform(-3, 3) * self.scale) * math.cos(base_rad),
-                      cy + (r_avg * 0.88 + rng.uniform(-3, 3) * self.scale) * math.sin(base_rad))
-                p1 = (cx + (r_avg + hair_thick * 0.6 + rng.uniform(-2, 2) * self.scale) * math.cos(base_rad + 0.08),
-                      cy + (r_avg + hair_thick * 0.6 + rng.uniform(-2, 2) * self.scale) * math.sin(base_rad + 0.08))
-                p2 = (cx + (r_avg + hair_thick * 1.05) * math.cos(base_rad + 0.15),
-                      cy + (r_avg + hair_thick * 1.05) * math.sin(base_rad + 0.15))
-                sweep = _catmull_rom_chain([p0, p1, p2], 4)
-                engine.quality.pencil_stroke(sweep, strength=0.72 + rng.uniform(-0.1, 0.15), width=1.10, wobble=0.25, passes=2)
+                # 1. Multi-pass directional crown sweeps from forehead part down towards temples and back
+                for ang_deg in range(190, 351, 6):
+                    base_rad = math.radians(ang_deg)
+                    p0 = (cx + (r_avg * 0.88 + rng.uniform(-3, 3) * self.scale) * math.cos(base_rad),
+                          cy + (r_avg * 0.88 + rng.uniform(-3, 3) * self.scale) * math.sin(base_rad))
+                    p1 = (cx + (r_avg + hair_thick * 0.6 + rng.uniform(-2, 2) * self.scale) * math.cos(base_rad + 0.08),
+                          cy + (r_avg + hair_thick * 0.6 + rng.uniform(-2, 2) * self.scale) * math.sin(base_rad + 0.08))
+                    p2 = (cx + (r_avg + hair_thick * 1.05) * math.cos(base_rad + 0.15),
+                          cy + (r_avg + hair_thick * 1.05) * math.sin(base_rad + 0.15))
+                    sweep = _catmull_rom_chain([p0, p1, p2], 4)
+                    engine.quality.pencil_stroke(sweep, strength=0.72 + rng.uniform(-0.1, 0.15), width=1.10, wobble=0.25, passes=2)
 
-            # 2. Deep core shading in the back crown / bun mass
-            bun_cx = cx + rx * 0.45
-            bun_cy = cy - ry * 0.55
-            for b_i in range(16):
-                b_ang = math.radians(b_i * 22.5)
-                b_r = (22.0 + (b_i % 4) * 6.0) * self.scale
-                p_start = (bun_cx + b_r * 0.4 * math.cos(b_ang), bun_cy + b_r * 0.4 * math.sin(b_ang))
-                p_end = (bun_cx + b_r * math.cos(b_ang + 0.5), bun_cy + b_r * math.sin(b_ang + 0.5))
-                engine.quality.pencil_stroke([p_start, p_end], strength=0.82, width=1.15, passes=2)
+                # 2. Deep core shading in the back crown / bun mass
+                bun_cx = cx + rx * 0.45
+                bun_cy = cy - ry * 0.55
+                for b_i in range(16):
+                    b_ang = math.radians(b_i * 22.5)
+                    b_r = (22.0 + (b_i % 4) * 6.0) * self.scale
+                    p_start = (bun_cx + b_r * 0.4 * math.cos(b_ang), bun_cy + b_r * 0.4 * math.sin(b_ang))
+                    p_end = (bun_cx + b_r * math.cos(b_ang + 0.5), bun_cy + b_r * math.sin(b_ang + 0.5))
+                    engine.quality.pencil_stroke([p_start, p_end], strength=0.82, width=1.15, passes=2)
 
         # 3. Dynamic hair contours from photo with multi-pass graphite depth
         hair_contours = self.extractor.get_hair_contours()
