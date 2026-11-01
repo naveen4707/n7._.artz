@@ -1455,22 +1455,130 @@ body {
 }
 
 /* ==========================================================================
-   RESPONSIVE DESIGN
+   RESPONSIVE DESIGN & MOBILE PWA OPTIMIZATIONS
    ========================================================================== */
 
 @media (max-width: 1024px) {
   .studio-layout {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
+    grid-template-rows: auto auto;
     overflow-y: auto;
+    height: auto;
   }
   body {
     overflow-y: auto;
   }
+  .canvas-workspace {
+    min-height: 520px;
+    height: auto;
+  }
   .lesson-sidebar {
     height: auto;
-    max-height: 400px;
+    max-height: 520px;
     border-top: 1px solid var(--border-subtle);
+    border-left: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 10px 14px;
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .brand-text h1 {
+    font-size: 16px;
+  }
+  .brand-tagline {
+    display: none;
+  }
+  .header-status {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    padding-top: 4px;
+    font-size: 11px;
+  }
+  .header-actions {
+    margin-left: auto;
+    gap: 6px;
+  }
+  .header-actions .btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .mode-bar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 6px 10px;
+  }
+  .mode-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .mode-tab {
+    padding: 6px 12px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .stage-scrubber-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .scrubber-controls {
+    order: 1;
+  }
+  .stage-slider-wrap {
+    order: 3;
+    width: 100%;
+  }
+  .scrubber-tools {
+    order: 2;
+    margin-left: auto;
+  }
+  .canvas-workspace {
+    min-height: 420px;
+    padding: 10px;
+  }
+  .paper-frame {
+    width: 100% !important;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 10 / 12;
+  }
+  .checkpoint-item {
+    padding: 10px 12px;
+    min-height: 44px;
+  }
+  .checkpoint-checkbox {
+    width: 20px;
+    height: 20px;
+    font-size: 13px;
+  }
+  .btn-complete-stage {
+    min-height: 44px;
+    font-size: 13px;
+  }
+  .preview-dual-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header .btn svg {
+    display: none;
+  }
+  .card {
+    padding: 12px;
+  }
+  .stage-meta-head h2 {
+    font-size: 15px;
+  }
+  .tools-list {
+    grid-template-columns: 1fr;
   }
 }
 

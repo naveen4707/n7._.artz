@@ -268,6 +268,12 @@ class LoomisRequestHandler(SimpleHTTPRequestHandler):
             else:
                 return self._send_json({"error": "Web frontend not found."}, status=HTTPStatus.NOT_FOUND)
 
+        if path in ("/sw.js", "/manifest.json", "/favicon.ico"):
+            target = WEB_DIR / path.lstrip("/")
+            if target.exists() and target.is_file():
+                mime, _ = mimetypes.guess_type(str(target))
+                return self._serve_file(target, mime or "application/javascript")
+
         if path.startswith("/web/"):
             rel_file = path[5:]
             target = WEB_DIR / rel_file

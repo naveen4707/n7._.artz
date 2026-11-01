@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="goldGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f5deb3" />
+      <stop offset="50%" stop-color="#d4af37" />
+      <stop offset="100%" stop-color="#aa8522" />
+    </linearGradient>
+    <radialGradient id="bgGrad512" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1b1f28" />
+      <stop offset="100%" stop-color="#0e1014" />
+    </radialGradient>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad512)" stroke="#d4af37" stroke-width="6" stroke-opacity="0.35" />
+
+  <!-- Loomis Cranial Sphere Scaffolding -->
+  <g transform="translate(256, 236)" fill="none" stroke="url(#goldGrad512)" stroke-linecap="round">
+    <!-- Outer 3D Sphere -->
+    <circle cx="0" cy="0" r="144" stroke-width="8" stroke-dasharray="10 8" opacity="0.45" />
+    <circle cx="0" cy="-16" r="124" stroke-width="9.5" />
+
+    <!-- 3D Brow Equator Ellipse -->
+    <ellipse cx="0" cy="-16" rx="124" ry="40" stroke-width="8" />
+
+    <!-- Central Facial Meridian Axis -->
+    <line x1="0" y1="-140" x2="0" y2="128" stroke-width="8" />
+
+    <!-- Mandible Jaw Rhythm (Bucket Handle) -->
+    <path d="M-96 26 Q -86 122 0 144 Q 86 122 96 26" stroke-width="9.5" />
+
+    <!-- Glabella Keystone & Dental Arc Hints -->
+    <polygon points="-16,-16 16,-16 10,10 -10,10" fill="url(#goldGrad512)" opacity="0.6" stroke-width="4" />
+    <path d="M-48 64 Q 0 86 48 64" stroke-width="6.5" opacity="0.75" />
+  </g>
+
+  <!-- Title Monogram / Atelier Tag -->
+  <text x="256" y="448" fill="#d4af37" font-family="'Cinzel', serif, sans-serif" font-size="38" font-weight="700" letter-spacing="8" text-anchor="middle">LOOMIS AI</text>
+</svg>

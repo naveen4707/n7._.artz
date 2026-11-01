@@ -1,0 +1,57 @@
+{
+  "name": "LoomisAI — Classical Portrait Drawing Studio",
+  "short_name": "LoomisAI",
+  "description": "AI-powered 20-stage Andrew Loomis portrait drawing studio. Master portrait drawing through personalized progressive graphite construction lessons.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0e1014",
+  "theme_color": "#0e1014",
+  "categories": [
+    "education",
+    "graphics",
+    "photo",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/web/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/web/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Upload Portrait",
+      "short_name": "Upload",
+      "description": "Upload a new portrait photo to generate 20 Loomis drawing stages",
+      "url": "/?action=upload",
+      "icons": [
+        {
+          "src": "/web/icons/icon-192.svg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "View Curriculum",
+      "short_name": "Lessons",
+      "description": "Explore the 20-stage Andrew Loomis drawing masterclass curriculum",
+      "url": "/?view=curriculum",
+      "icons": [
+        {
+          "src": "/web/icons/icon-192.svg",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

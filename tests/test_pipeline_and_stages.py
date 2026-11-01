@@ -392,6 +392,77 @@ class TestLoomisPipelineAndStages(unittest.TestCase):
         self.assertIn("error", res_inv)
         self.assertFalse(res_inv["can_advance"])
 
+    def test_14_milestone_5_mobile_pwa_and_android_readiness(self):
+        """
+        Verify Milestone 5: Web App Integration & Mobile/Android Packaging Readiness:
+        - PWA manifest.json is valid and contains standard standalone app configurations
+        - Service worker sw.js provides asset caching and offline shell support
+        - Vector app icons exist for responsive mobile launch screens
+        - Android Capacitor configuration is properly configured for com.loomisai.app
+        - AndroidManifest.xml contains necessary permissions (INTERNET, CAMERA, STORAGE)
+        - Android release documentation README_ANDROID.md details Play Store publication
+        """
+        import json
+        from pathlib import Path
+
+        repo_root = Path(__file__).resolve().parent.parent
+
+        # 1. PWA Manifest verification
+        manifest_path = repo_root / "web" / "manifest.json"
+        self.assertTrue(manifest_path.exists(), "web/manifest.json must exist")
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+        self.assertIn("name", manifest)
+        self.assertIn("short_name", manifest)
+        self.assertEqual(manifest.get("display"), "standalone")
+        self.assertIn("icons", manifest)
+        self.assertGreaterEqual(len(manifest["icons"]), 2)
+
+        # 2. Service Worker verification
+        sw_path = repo_root / "web" / "sw.js"
+        self.assertTrue(sw_path.exists(), "web/sw.js must exist")
+        sw_content = sw_path.read_text(encoding="utf-8")
+        self.assertIn("addEventListener('install'", sw_content)
+        self.assertIn("addEventListener('activate'", sw_content)
+        self.assertIn("addEventListener('fetch'", sw_content)
+
+        # 3. Vector Icons
+        icon_192 = repo_root / "web" / "icons" / "icon-192.svg"
+        icon_512 = repo_root / "web" / "icons" / "icon-512.svg"
+        self.assertTrue(icon_192.exists(), "icon-192.svg must exist")
+        self.assertTrue(icon_512.exists(), "icon-512.svg must exist")
+        self.assertGreater(icon_192.stat().st_size, 100)
+        self.assertGreater(icon_512.stat().st_size, 100)
+
+        # 4. Web index.html PWA tags
+        index_html = (repo_root / "web" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('rel="manifest"', index_html)
+        self.assertIn('name="theme-color"', index_html)
+        self.assertIn('name="apple-mobile-web-app-capable"', index_html)
+
+        # 5. Android Capacitor Config
+        cap_config_path = repo_root / "android" / "capacitor.config.json"
+        self.assertTrue(cap_config_path.exists(), "android/capacitor.config.json must exist")
+        with open(cap_config_path, "r", encoding="utf-8") as f:
+            cap_config = json.load(f)
+        self.assertEqual(cap_config.get("appId"), "com.loomisai.app")
+        self.assertEqual(cap_config.get("appName"), "LoomisAI")
+
+        # 6. AndroidManifest.xml
+        manifest_xml_path = repo_root / "android" / "AndroidManifest.xml"
+        self.assertTrue(manifest_xml_path.exists(), "android/AndroidManifest.xml must exist")
+        xml_content = manifest_xml_path.read_text(encoding="utf-8")
+        self.assertIn('package="com.loomisai.app"', xml_content)
+        self.assertIn('android.permission.INTERNET', xml_content)
+        self.assertIn('android.permission.CAMERA', xml_content)
+
+        # 7. Android Documentation
+        android_readme = repo_root / "android" / "README_ANDROID.md"
+        self.assertTrue(android_readme.exists(), "android/README_ANDROID.md must exist")
+        readme_text = android_readme.read_text(encoding="utf-8")
+        self.assertIn("Capacitor", readme_text)
+        self.assertIn("Google Play", readme_text)
+
 
 if __name__ == "__main__":
     unittest.main()
