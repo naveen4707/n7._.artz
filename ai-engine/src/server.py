@@ -292,14 +292,23 @@ class LoomisRequestHandler(SimpleHTTPRequestHandler):
 
         if path == "/api/stages-info":
             # Add availability flag to each stage
+            params = parse_qs(parsed.query)
+            target_job_id = params.get("job_id", [None])[0]
+            job_stages_dir = (JOBS_DIR / target_job_id / "stages") if target_job_id else None
+
             stages_with_status = []
             for item in STAGE_METADATA:
                 num = item["stage"]
                 fn = f"stage_{num:02d}.png"
-                exists = (HAND_DRAWN_DIR / fn).exists()
+                if job_stages_dir and (job_stages_dir / fn).exists():
+                    url = f"/api/jobs/{target_job_id}/stages/{fn}?t={int(time.time())}"
+                    exists = True
+                else:
+                    exists = (HAND_DRAWN_DIR / fn).exists()
+                    url = f"/output/hand_drawn/{fn}?t={int(time.time())}" if exists else None
                 stages_with_status.append({
                     **item,
-                    "url": f"/output/hand_drawn/{fn}" if exists else None,
+                    "url": url,
                     "filename": fn,
                     "generated": exists,
                 })

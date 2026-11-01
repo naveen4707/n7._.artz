@@ -1471,6 +1471,11 @@ class LoomisGeometry:
                     self.pose.get("eyesClosed", False),
             },
 
+            "image": {
+                "width": self.width,
+                "height": self.height,
+            },
+
             "pose": dict(self.pose),
 
             # -------------------------------------------------

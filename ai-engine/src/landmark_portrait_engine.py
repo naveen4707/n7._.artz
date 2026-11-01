@@ -142,7 +142,12 @@ class LandmarkPortraitEngine:
         return self.base.transform_point((p["x"], p["y"]))
 
     def lm_pts(self, indices: List[int]) -> List[Point]:
-        return [self.lm(i) for i in indices if self.lm(i) is not None]
+        pts: List[Point] = []
+        for i in indices:
+            p = self.lm(i)
+            if p is not None:
+                pts.append(p)
+        return pts
 
     def spline(self, pts: List[Point], samples: int = 6) -> List[Point]:
         return _catmull_rom_chain(pts, samples)
@@ -272,57 +277,57 @@ class LandmarkPortraitEngine:
         cranium = self.construction.get("loomis", {}).get("cranium", {})
         center = cranium.get("center")
         if center:
-            cx, cy = self.base.transform_point((center["x"], center["y"]))
-            rx = float(cranium.get("radiusX", 130)) * self.scale
-            ry = float(cranium.get("radiusY", 130)) * self.scale
-            r_avg = (rx + ry) * 0.5
-            engine.quality.ghost_stroke(
-                _circle_pts((cx, cy), r_avg, 36),
-                strength=0.22 * strength_factor,
-                width=0.75,
-                closed=True,
-            )
-            # Secondary concentric guide
-            engine.quality.ghost_stroke(
-                _circle_pts((cx, cy), r_avg * 0.98, 32),
-                strength=0.12 * strength_factor,
-                width=0.55,
-                closed=True,
-            )
+            pt = self.base.transform_point((center["x"], center["y"]))
+            if pt is not None:
+                cx, cy = pt
+                rx = float(cranium.get("radiusX", 130)) * self.scale
+                ry = float(cranium.get("radiusY", 130)) * self.scale
+                r_avg = (rx + ry) * 0.5
+                engine.quality.ghost_stroke(
+                    _circle_pts((cx, cy), r_avg, 36),
+                    strength=0.22 * strength_factor,
+                    width=0.75,
+                    closed=True,
+                )
+                # Secondary concentric guide
+                engine.quality.ghost_stroke(
+                    _circle_pts((cx, cy), r_avg * 0.98, 32),
+                    strength=0.12 * strength_factor,
+                    width=0.55,
+                    closed=True,
+                )
 
-        # Loomis side disc (temporal cut on near side for 3/4 & profile views)
-        yaw = float(self.analysis.get("pose", {}).get("yaw", 0.0) or 0.0)
-        if center:
-            cx, cy = self.base.transform_point((center["x"], center["y"]))
-            r = r_avg
-            if yaw > 12.0:
-                # 3/4 or Profile Right: side plane visible on left
-                disc_cx = cx - r * 0.42
-                disc_cy = cy + r * 0.05
-                disc_pts = [
-                    (disc_cx + r * 0.35 * math.cos(math.radians(a)),
-                     disc_cy + r * 0.48 * math.sin(math.radians(a)))
-                    for a in range(0, 360, 10)
-                ]
-                engine.quality.ghost_stroke(disc_pts, strength=0.20 * strength_factor, width=0.65, closed=True)
-                engine.quality.ghost_stroke([(disc_cx, disc_cy - r * 0.44), (disc_cx, disc_cy + r * 0.44)], strength=0.14 * strength_factor, width=0.55)
-                engine.quality.ghost_stroke([(disc_cx - r * 0.30, disc_cy), (disc_cx + r * 0.30, disc_cy)], strength=0.14 * strength_factor, width=0.55)
-            elif yaw < -12.0:
-                # 3/4 or Profile Left: side plane visible on right
-                disc_cx = cx + r * 0.42
-                disc_cy = cy + r * 0.05
-                disc_pts = [
-                    (disc_cx + r * 0.35 * math.cos(math.radians(a)),
-                     disc_cy + r * 0.48 * math.sin(math.radians(a)))
-                    for a in range(0, 360, 10)
-                ]
-                engine.quality.ghost_stroke(disc_pts, strength=0.20 * strength_factor, width=0.65, closed=True)
-                engine.quality.ghost_stroke([(disc_cx, disc_cy - r * 0.44), (disc_cx, disc_cy + r * 0.44)], strength=0.14 * strength_factor, width=0.55)
-                engine.quality.ghost_stroke([(disc_cx - r * 0.30, disc_cy), (disc_cx + r * 0.30, disc_cy)], strength=0.14 * strength_factor, width=0.55)
+                # Loomis side disc (temporal cut on near side for 3/4 & profile views)
+                yaw = float(self.analysis.get("pose", {}).get("yaw", 0.0) or 0.0)
+                r = r_avg
+                if yaw > 12.0:
+                    # 3/4 or Profile Right: side plane visible on left
+                    disc_cx = cx - r * 0.42
+                    disc_cy = cy + r * 0.05
+                    disc_pts = [
+                        (disc_cx + r * 0.35 * math.cos(math.radians(a)),
+                         disc_cy + r * 0.48 * math.sin(math.radians(a)))
+                        for a in range(0, 360, 10)
+                    ]
+                    engine.quality.ghost_stroke(disc_pts, strength=0.20 * strength_factor, width=0.65, closed=True)
+                    engine.quality.ghost_stroke([(disc_cx, disc_cy - r * 0.44), (disc_cx, disc_cy + r * 0.44)], strength=0.14 * strength_factor, width=0.55)
+                    engine.quality.ghost_stroke([(disc_cx - r * 0.30, disc_cy), (disc_cx + r * 0.30, disc_cy)], strength=0.14 * strength_factor, width=0.55)
+                elif yaw < -12.0:
+                    # 3/4 or Profile Left: side plane visible on right
+                    disc_cx = cx + r * 0.42
+                    disc_cy = cy + r * 0.05
+                    disc_pts = [
+                        (disc_cx + r * 0.35 * math.cos(math.radians(a)),
+                         disc_cy + r * 0.48 * math.sin(math.radians(a)))
+                        for a in range(0, 360, 10)
+                    ]
+                    engine.quality.ghost_stroke(disc_pts, strength=0.20 * strength_factor, width=0.65, closed=True)
+                    engine.quality.ghost_stroke([(disc_cx, disc_cy - r * 0.44), (disc_cx, disc_cy + r * 0.44)], strength=0.14 * strength_factor, width=0.55)
+                    engine.quality.ghost_stroke([(disc_cx - r * 0.30, disc_cy), (disc_cx + r * 0.30, disc_cy)], strength=0.14 * strength_factor, width=0.55)
 
         # 3D central axis: follows cranial sphere curve down through nose root, tip, and chin
         axis_lms = [10, 168, 6, 4, 13, 152]
-        axis_pts = [self.lm(i) for i in axis_lms if self.lm(i) is not None]
+        axis_pts = self.lm_pts(axis_lms)
         if len(axis_pts) >= 4:
             smooth_axis = self.spline(axis_pts, 4)
             engine.quality.ghost_stroke(
@@ -696,11 +701,13 @@ class LandmarkPortraitEngine:
         cranium = self.construction.get("loomis", {}).get("cranium", {})
         center = cranium.get("center")
         if center:
-            cx, cy = self.base.transform_point((center["x"], center["y"]))
-            rx = float(cranium.get("radiusX", 130)) * self.scale
-            ry = float(cranium.get("radiusY", 130)) * self.scale
-            r_avg = (rx + ry) * 0.5
-            hair_thick = 18.0 * self.scale
+            pt = self.base.transform_point((center["x"], center["y"]))
+            if pt is not None:
+                cx, cy = pt
+                rx = float(cranium.get("radiusX", 130)) * self.scale
+                ry = float(cranium.get("radiusY", 130)) * self.scale
+                r_avg = (rx + ry) * 0.5
+                hair_thick = 18.0 * self.scale
 
             # Upper crown volume arc
             crown_pts: List[Point] = []
@@ -1064,15 +1071,17 @@ class LandmarkPortraitEngine:
                 pts[:, 1].min() <= 8 or pts[:, 1].max() >= img_h - 9):
                 continue
             step = max(1, len(pts) // 30)
-            sampled = [self.base.transform_point((float(p[0]), float(p[1]))) for p in pts[::step]]
+            raw_sampled = [self.base.transform_point((float(p[0]), float(p[1]))) for p in pts[::step]]
+            sampled: List[Point] = [p for p in raw_sampled if p is not None]
             if len(sampled) >= 2:
                 smooth_cnt = _catmull_rom_chain(sampled, 3)
                 avg_y = sum(p[1] for p in pts) / len(pts)
-                if avg_y < 230:
+                rel_y = avg_y / max(1.0, float(img_h))
+                if rel_y < 0.28:
                     engine.quality.pencil_stroke(smooth_cnt, strength=0.88, width=1.10, wobble=0.30, passes=2)
-                elif 520 < avg_y < 620:
+                elif 0.60 < rel_y < 0.72:
                     engine.quality.pencil_stroke(smooth_cnt, strength=0.92, width=1.20, wobble=0.25, passes=2)
-                elif avg_y >= 620:
+                elif rel_y >= 0.72:
                     engine.quality.pencil_stroke(smooth_cnt, strength=0.85, width=1.15, wobble=0.30, passes=2)
                 else:
                     engine.quality.pencil_stroke(smooth_cnt, strength=0.92, width=1.30, wobble=0.35, passes=2)
@@ -1253,11 +1262,13 @@ class LandmarkPortraitEngine:
         cranium = self.construction.get("loomis", {}).get("cranium", {})
         center = cranium.get("center")
         if center:
-            cx, cy = self.base.transform_point((center["x"], center["y"]))
-            rx = float(cranium.get("radiusX", 130)) * self.scale
-            ry = float(cranium.get("radiusY", 130)) * self.scale
-            r_avg = (rx + ry) * 0.5
-            hair_thick = 20.0 * self.scale
+            pt = self.base.transform_point((center["x"], center["y"]))
+            if pt is not None:
+                cx, cy = pt
+                rx = float(cranium.get("radiusX", 130)) * self.scale
+                ry = float(cranium.get("radiusY", 130)) * self.scale
+                r_avg = (rx + ry) * 0.5
+                hair_thick = 20.0 * self.scale
 
             # 1. Multi-pass directional crown sweeps from forehead part down towards temples and back
             for ang_deg in range(190, 351, 6):

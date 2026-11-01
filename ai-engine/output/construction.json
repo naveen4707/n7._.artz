@@ -18,6 +18,10 @@
     "eyeState": "Open Gaze",
     "eyesClosed": false
   },
+  "image": {
+    "width": 631,
+    "height": 858
+  },
   "pose": {
     "available": true,
     "yaw": 6.444,

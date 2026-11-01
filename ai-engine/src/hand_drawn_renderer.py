@@ -822,17 +822,18 @@ class HandDrawnLoomisRenderer:
             end_p = self.transform_point(
                 point_xy(end)
             )
-            eye_vec = (end_p[0] - start_p[0], end_p[1] - start_p[1])
-            ext_sp = (start_p[0] - eye_vec[0] * 0.35, start_p[1] - eye_vec[1] * 0.35)
-            ext_ep = (end_p[0] + eye_vec[0] * 0.35, end_p[1] + eye_vec[1] * 0.35)
-            engine.line(
-                ext_sp,
-                ext_ep,
-                width=main_width,
-                fill=main_fill,
-                roughness=0.9,
-                passes=2 if is_focus else 1,
-            )
+            if start_p is not None and end_p is not None:
+                eye_vec = (end_p[0] - start_p[0], end_p[1] - start_p[1])
+                ext_sp = (start_p[0] - eye_vec[0] * 0.35, start_p[1] - eye_vec[1] * 0.35)
+                ext_ep = (end_p[0] + eye_vec[0] * 0.35, end_p[1] + eye_vec[1] * 0.35)
+                engine.line(
+                    ext_sp,
+                    ext_ep,
+                    width=main_width,
+                    fill=main_fill,
+                    roughness=0.9,
+                    passes=2 if is_focus else 1,
+                )
 
             center = self.eye_plane.get("center")
             if center:
@@ -1023,8 +1024,9 @@ class HandDrawnLoomisRenderer:
             crease = muzzle.get("labiomentalGroove")
             if crease:
                 cr_p = self.transform_point(point_xy(crease))
-                w_tick = 16.0 * self.transform["scale"]
-                engine.line((cr_p[0] - w_tick, cr_p[1]), (cr_p[0] + w_tick, cr_p[1]), width=1.4, fill=GRAPHITE_LIGHT, roughness=0.7, passes=1)
+                if cr_p is not None:
+                    w_tick = 16.0 * self.transform["scale"]
+                    engine.line((cr_p[0] - w_tick, cr_p[1]), (cr_p[0] + w_tick, cr_p[1]), width=1.4, fill=GRAPHITE_LIGHT, roughness=0.7, passes=1)
 
             philtrum = muzzle.get("philtrum", [])
             if len(philtrum) >= 3:
@@ -1066,6 +1068,9 @@ class HandDrawnLoomisRenderer:
                 continue
 
             center_p = self.transform_point(point_xy(center))
+            if not center_p:
+                continue
+
             scale = self.transform["scale"]
             width = float(eye.get("width", 30)) * scale
             height = float(eye.get("height", 10)) * scale

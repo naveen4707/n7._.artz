@@ -178,9 +178,10 @@
   }
 
   // ── API CALLS ─────────────────────────────────────────────────────────
-  async function fetchStages() {
+  async function fetchStages(jobId) {
     try {
-      const res = await fetch('/api/stages-info');
+      const url = jobId ? `/api/stages-info?job_id=${encodeURIComponent(jobId)}` : '/api/stages-info';
+      const res = await fetch(url);
       const data = await res.json();
       if (data && data.stages) {
         state.stages = data.stages;
@@ -421,7 +422,15 @@
       drawingUrl = state.bwPhotoUrl || '/input/reference_bw.jpg';
     } else {
       const stagePad = String(stageNum).padStart(2, '0');
-      drawingUrl = `/output/hand_drawn/stage_${stagePad}.png?v=${Date.now().toString().slice(0, 8)}`;
+      const stageObj = state.stages && state.stages[stageNum - 1];
+      if (stageObj && stageObj.url) {
+        const sep = stageObj.url.includes('?') ? '&' : '?';
+        drawingUrl = `${stageObj.url}${sep}v=${Date.now().toString().slice(0, 8)}`;
+      } else if (state.currentJobId && state.currentJobId !== 'reference_job') {
+        drawingUrl = `/api/jobs/${state.currentJobId}/stages/stage_${stagePad}.png?v=${Date.now().toString().slice(0, 8)}`;
+      } else {
+        drawingUrl = `/output/hand_drawn/stage_${stagePad}.png?v=${Date.now().toString().slice(0, 8)}`;
+      }
     }
 
     // Update images
@@ -450,9 +459,9 @@
     els.loomisPrinciple.textContent = `"${info.loomisPrinciple || 'Observe the true form.'}"`;
     els.drawingAction.textContent = info.drawingAction || 'Construct with light graphite strokes.';
 
-    // Update AI Coach speech bubble with stage advice
-    if (els.coachSpeechBubble && COACH_TIPS[stageNum]) {
-      els.coachSpeechBubble.textContent = `Stage ${stageNum} Advice: ${COACH_TIPS[stageNum].technique}`;
+    // Update AI Coach speech bubble with dynamic personalized stage advice
+    if (els.coachSpeechBubble) {
+      els.coachSpeechBubble.textContent = getPersonalizedCoachAdvice(stageNum);
     }
 
     // Side by side label
@@ -827,6 +836,10 @@
         if (data.bwImageUrl) state.bwPhotoUrl = data.bwImageUrl;
         updateReferenceImages();
         updateTelemetry(data.pose);
+        if (data.stages && data.stages.length > 0) {
+          state.stages = data.stages;
+        }
+        renderStagesGrid();
         setStage(20);
         hideLoader();
       } else {
@@ -888,7 +901,11 @@
           if (data.validation) {
             updateValidationUI(data.validation);
           }
-          await fetchStages();
+          if (data.stages && data.stages.length > 0) {
+            state.stages = data.stages;
+          } else {
+            await fetchStages(state.currentJobId);
+          }
           renderStagesGrid();
           // Display B&W conversion first (Stage 0), then step through Loomis method!
           setStage(0);
@@ -904,8 +921,44 @@
     }
   }
 
+  function getPersonalizedCoachAdvice(stageNum) {
+    if (stageNum === 0) {
+      return "📸 Studio B&W Reference: Study your subject's light direction and high-contrast tonal hierarchy. Loomis emphasizes seeing the subject in pure value before placing construction lines.";
+    }
+    const tip = COACH_TIPS[stageNum];
+    if (!tip) return "Observe the construction lines and keep your pencil strokes light and fluid.";
+
+    const pose = state.pose || {};
+    const yaw = pose.yaw !== undefined ? pose.yaw : 0;
+    const pitch = pose.pitch !== undefined ? pose.pitch : 0;
+    const viewLabel = pose.viewLabel || 'Frontal / 3/4 View';
+    const eyeState = pose.eyeState || 'Open Eyes';
+
+    let poseContext = '';
+    if (stageNum <= 5) {
+      if (Math.abs(yaw) > 10) {
+        poseContext = `Subject is turned at ${yaw > 0 ? '+' : ''}${yaw.toFixed(1)}° yaw (${viewLabel}). Notice how the Loomis cranial side disc and oval center line tilt to anchor 3D perspective.`;
+      } else {
+        poseContext = `Subject has a direct ${viewLabel}. Keep the cranial sphere balanced and position the central vertical brow-to-chin line accurately.`;
+      }
+    } else if (stageNum <= 10) {
+      if (Math.abs(pitch) > 5) {
+        poseContext = `The head has a tilt of ${pitch > 0 ? '+' : ''}${pitch.toFixed(1)}° pitch. The brow, nose base, and jawline curve along the spherical form.`;
+      } else {
+        poseContext = `Loomis's rule of thirds: hairline to brow, brow to nose base, and nose base to chin are derived directly from this portrait's landmarks.`;
+      }
+    } else if (stageNum <= 14) {
+      poseContext = `Feature placement (${eyeState}): Notice how eye sockets, pupils, and nose wedge align with this subject's unique facial anatomy.`;
+    } else {
+      poseContext = `Tonal rendering: Build subtle volume with soft 2B–4B cross-hatching, respecting the individual shadow shapes of this portrait.`;
+    }
+
+    return `Stage ${stageNum} Coach Advice: ${tip.technique} — ${poseContext}`;
+  }
+
   function updateTelemetry(pose) {
     if (!pose) return;
+    state.pose = pose;
     if (pose.yaw !== undefined) els.tYaw.textContent = `${pose.yaw > 0 ? '+' : ''}${pose.yaw.toFixed(1)}°`;
     if (pose.pitch !== undefined) els.tPitch.textContent = `${pose.pitch > 0 ? '+' : ''}${pose.pitch.toFixed(1)}°`;
     if (pose.roll !== undefined) els.tRoll.textContent = `${pose.roll > 0 ? '+' : ''}${pose.roll.toFixed(1)}°`;
@@ -998,11 +1051,17 @@
     const a = document.createElement('a');
     if (state.currentStage === 0) {
       a.href = state.bwPhotoUrl || '/input/reference_bw.jpg';
-      a.download = 'loomis_bw_reference.jpg';
+      a.download = `loomis_${state.currentJobId}_bw_reference.jpg`;
     } else {
       const pad = String(state.currentStage).padStart(2, '0');
-      a.href = `/output/hand_drawn/stage_${pad}.png`;
-      a.download = `loomis_stage_${pad}.png`;
+      let url = `/output/hand_drawn/stage_${pad}.png`;
+      if (state.stages && state.stages[state.currentStage - 1] && state.stages[state.currentStage - 1].url) {
+        url = state.stages[state.currentStage - 1].url;
+      } else if (state.currentJobId && state.currentJobId !== 'reference_job') {
+        url = `/api/jobs/${state.currentJobId}/stages/stage_${pad}.png`;
+      }
+      a.href = url;
+      a.download = `loomis_${state.currentJobId}_stage_${pad}.png`;
     }
     document.body.appendChild(a);
     a.click();

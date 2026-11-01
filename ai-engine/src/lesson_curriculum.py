@@ -835,7 +835,7 @@ def verify_stage_checkpoint(
 
     total_checks = len(curriculum["checkpoint_checklist"])
     completed_checks = sum(1 for c in checks if c)
-    score_percent = int(round((completed_checks / max(1, total_checks)) * 100))
+    score_percent = round((completed_checks / max(1, total_checks)) * 100)
 
     if completed_checks == total_checks:
         mastery_level = "Mastered"
