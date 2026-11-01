@@ -2,33 +2,33 @@
   "version": "2.0",
   "overall_score": 100.0,
   "status": "PASS",
-  "normalizing_interocular_px": 60.9,
-  "normalizing_face_height_px": 343.8,
+  "normalizing_interocular_px": 62.1,
+  "normalizing_face_height_px": 303.4,
   "components": [
     {
       "name": "Rule of Thirds",
       "measured_ratios": {
-        "upper_pct": 20.6,
-        "mid_pct": 40.5,
-        "lower_pct": 38.9
+        "upper_pct": 21.6,
+        "mid_pct": 42.5,
+        "lower_pct": 35.9
       },
       "expected_ratios": {
         "upper_pct": 33.3,
         "mid_pct": 33.3,
         "lower_pct": 33.3
       },
-      "deviation_percent": 8.5,
+      "deviation_percent": 7.8,
       "unit": "percent",
       "evidence_type": "directly_observed",
       "confidence": 0.94,
       "status": "PASS",
-      "actionable_recommendation": "Head pitch is +9.0° and roll is -6.5°. Proportions adhere to Loomis perspective thirds with tilt foreshortening."
+      "actionable_recommendation": "Head pitch is +13.1° and roll is -2.2°. Proportions adhere to Loomis perspective thirds with tilt foreshortening."
     },
     {
       "name": "Interocular Spacing (Five Eyes Rule)",
-      "measured_value": 1.08,
+      "measured_value": 1.14,
       "expected_value": 1.0,
-      "deviation_percent": 8.1,
+      "deviation_percent": 14.0,
       "unit": "eye_width_ratio",
       "evidence_type": "directly_observed",
       "confidence": 0.96,
@@ -37,25 +37,25 @@
     },
     {
       "name": "Head Pose & Eye Plane Alignment",
-      "measured_value": 7.0,
-      "expected_value": -6.5,
-      "deviation": 0.54,
+      "measured_value": 3.2,
+      "expected_value": -2.2,
+      "deviation": 0.99,
       "unit": "degrees",
       "evidence_type": "estimated_geometry",
       "confidence": 0.94,
       "status": "PASS",
-      "actionable_recommendation": "Eye plane angle (7.0°) accurately aligns with head pose roll (-6.5°).",
+      "actionable_recommendation": "Eye plane angle (3.2°) accurately aligns with head pose roll (-2.2°).",
       "pose_summary": {
-        "yaw": 4.1,
-        "pitch": 9.0,
-        "roll": -6.5,
+        "yaw": 6.4,
+        "pitch": 13.1,
+        "roll": -2.2,
         "orientation": "front"
       }
     },
     {
       "name": "Cranial Sphere Proportion",
-      "measured_value": 165.0,
-      "expected_value": 165.0,
+      "measured_value": 145.6,
+      "expected_value": 145.6,
       "deviation": 0.0,
       "deviation_percent": 0.0,
       "unit": "pixels",
@@ -87,16 +87,16 @@
     }
   ],
   "corrections": {
-    "brow_equator_curvature": 1.88,
-    "eye_plane_angle_deg": -6.49,
-    "mandible_perspective_compression": 0.988,
+    "brow_equator_curvature": 2.72,
+    "eye_plane_angle_deg": -2.25,
+    "mandible_perspective_compression": 0.974,
     "foreshortening_recommended": true
   },
   "warnings": [],
   "recommendations": [
-    "Head pitch is +9.0° and roll is -6.5°. Proportions adhere to Loomis perspective thirds with tilt foreshortening.",
+    "Head pitch is +13.1° and roll is -2.2°. Proportions adhere to Loomis perspective thirds with tilt foreshortening.",
     "Interocular space matches 1 eye width.",
-    "Eye plane angle (7.0°) accurately aligns with head pose roll (-6.5°).",
+    "Eye plane angle (3.2°) accurately aligns with head pose roll (-2.2°).",
     "Cranial ball volume supports the full facial armature.",
     "Facial features securely anchored to central meridian.",
     "All 20 stages generated with verified 1000x1200 dimensions."

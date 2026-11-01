@@ -270,8 +270,12 @@ class GraphiteStrokeEngine:
         roughness=0.8,
         passes=2,
         segments=96,
+        rotation=0.0,
     ):
         points = []
+        rot_rad = math.radians(rotation)
+        cos_rot = math.cos(rot_rad)
+        sin_rot = math.sin(rot_rad)
 
         for index in range(segments + 1):
             angle = (
@@ -281,17 +285,13 @@ class GraphiteStrokeEngine:
                 segments
             )
 
-            x = center[0] + (
-                math.cos(angle) *
-                radius_x
-            )
+            dx = math.cos(angle) * radius_x
+            dy = math.sin(angle) * radius_y
 
-            y = center[1] + (
-                math.sin(angle) *
-                radius_y
-            )
+            rx = dx * cos_rot - dy * sin_rot
+            ry = dx * sin_rot + dy * cos_rot
 
-            points.append((x, y))
+            points.append((center[0] + rx, center[1] + ry))
 
         self.stroke(
             points,
@@ -627,7 +627,7 @@ class HandDrawnLoomisRenderer:
     # CRANIUM
     # ========================================================
 
-    def draw_cranium(self, engine):
+    def draw_cranium(self, engine, is_focus=False):
         center = self.cranium.get("center")
         if not center:
             return
@@ -656,164 +656,276 @@ class HandDrawnLoomisRenderer:
             * self.transform["scale"]
         )
 
+        main_fill = GRAPHITE if is_focus else GRAPHITE_LIGHT
+        main_width = 2.4 if is_focus else 1.4
+        main_passes = 3 if is_focus else 1
+
+        # 1. Primary cranial sphere
         engine.ellipse(
             center,
             radius_x,
             radius_y,
-            width=3,
-            fill=GRAPHITE,
-            roughness=1.2,
-            passes=3,
+            width=main_width,
+            fill=main_fill,
+            roughness=1.0,
+            passes=main_passes,
         )
 
-        # Very light secondary construction circle.
+        # 2. Exploratory search lines (the artist searching for the sphere)
         engine.ellipse(
             center,
             radius_x * 0.985,
             radius_y * 0.985,
-            width=1,
+            width=1.0,
             fill=GRAPHITE_FAINT,
             roughness=0.6,
             passes=1,
         )
+        engine.ellipse(
+            center,
+            radius_x * 1.015,
+            radius_y * 1.015,
+            width=0.8,
+            fill=GRAPHITE_FAINT,
+            roughness=0.7,
+            passes=1,
+        )
 
-        # Andrew Loomis Signature Side Disc (temporal slice for 3/4 and profile views)
-        pose = self.construction.get("pose", {})
-        yaw = float(pose.get("yaw", 0.0) or 0.0)
-        cx, cy = center
-        r = (radius_x + radius_y) * 0.5
-        if yaw > 12.0:
-            disc_cx = cx - r * 0.42
-            disc_cy = cy + r * 0.05
-            engine.ellipse((disc_cx, disc_cy), r * 0.35, r * 0.48, width=1, fill=GRAPHITE_FAINT, roughness=0.8, passes=1)
-            engine.line((disc_cx, disc_cy - r * 0.44), (disc_cx, disc_cy + r * 0.44), width=1, fill=GRAPHITE_FAINT)
-            engine.line((disc_cx - r * 0.30, disc_cy), (disc_cx + r * 0.30, disc_cy), width=1, fill=GRAPHITE_FAINT)
-        elif yaw < -12.0:
-            disc_cx = cx + r * 0.42
-            disc_cy = cy + r * 0.05
-            engine.ellipse((disc_cx, disc_cy), r * 0.35, r * 0.48, width=1, fill=GRAPHITE_FAINT, roughness=0.8, passes=1)
-            engine.line((disc_cx, disc_cy - r * 0.44), (disc_cx, disc_cy + r * 0.44), width=1, fill=GRAPHITE_FAINT)
-            engine.line((disc_cx - r * 0.30, disc_cy), (disc_cx + r * 0.30, disc_cy), width=1, fill=GRAPHITE_FAINT)
+        # 3. 3D Cranial Tilt Axis
+        tilt_axis = self.cranium.get("tiltAxis")
+        if tilt_axis:
+            top_p = self.transform_point(point_xy(tilt_axis.get("top")))
+            bot_p = self.transform_point(point_xy(tilt_axis.get("bottom")))
+            if top_p and bot_p:
+                axis_vec = (top_p[0] - bot_p[0], top_p[1] - bot_p[1])
+                ext_top = (top_p[0] + axis_vec[0] * 0.12, top_p[1] + axis_vec[1] * 0.12)
+                ext_bot = (bot_p[0] - axis_vec[0] * 0.08, bot_p[1] - axis_vec[1] * 0.08)
+                engine.line(
+                    ext_top,
+                    ext_bot,
+                    width=1.6 if is_focus else 1.0,
+                    fill=GRAPHITE_LIGHT if is_focus else GRAPHITE_FAINT,
+                    roughness=0.7,
+                    passes=1,
+                )
+
+        # 4. Top vertex pole cap (perspective ellipse at crown)
+        pole_ellipse = self.cranium.get("poleEllipse")
+        if pole_ellipse:
+            cap_center = self.transform_point(point_xy(pole_ellipse.get("center")))
+            cap_rx = float(pole_ellipse.get("radiusX", 20)) * self.transform["scale"]
+            cap_ry = float(pole_ellipse.get("radiusY", 10)) * self.transform["scale"]
+            cap_angle = float(pole_ellipse.get("angle", 0))
+            if cap_center:
+                engine.ellipse(
+                    cap_center,
+                    cap_rx,
+                    cap_ry,
+                    width=1.4 if is_focus else 0.9,
+                    fill=GRAPHITE_LIGHT if is_focus else GRAPHITE_FAINT,
+                    roughness=0.6,
+                    passes=1,
+                    rotation=cap_angle,
+                )
 
     # ========================================================
-    # CENTER AXIS
+    # CENTER AXIS & BROW EQUATOR
     # ========================================================
 
     def draw_center_axis(
         self,
         engine,
+        is_focus=False,
     ):
-        points = self.center_axis.get("points", [])
+        main_fill = GRAPHITE if is_focus else GRAPHITE_LIGHT
+        main_width = 2.2 if is_focus else 1.4
+
+        # 1. 3D Brow Equator Curve (Horizontal Great Circle)
+        brow_equator = self.center_axis.get("browEquator")
+        if brow_equator and "points" in brow_equator:
+            eq_pts = self.transform_points(brow_equator["points"])
+            if len(eq_pts) >= 3:
+                engine.curve(
+                    eq_pts,
+                    width=main_width,
+                    fill=main_fill,
+                    roughness=0.85,
+                    passes=2 if is_focus else 1,
+                )
+
+        # 2. Central Facial Meridian Curve (Vertical Great Circle)
+        points = self.center_axis.get("meridian") or self.center_axis.get("points", [])
         if isinstance(points, list) and len(points) >= 3:
             transformed = self.transform_points(points)
             if len(transformed) >= 3:
                 engine.curve(
                     transformed,
-                    width=2,
-                    fill=GRAPHITE_LIGHT,
-                    roughness=0.8,
-                    passes=2,
+                    width=main_width,
+                    fill=main_fill,
+                    roughness=0.85,
+                    passes=2 if is_focus else 1,
                 )
-                return
+        else:
+            start = self.center_axis.get("start")
+            end = self.center_axis.get("end")
 
-        start = self.center_axis.get("start")
-        end = self.center_axis.get("end")
+            if not start or not end:
+                if len(points) >= 2:
+                    start = points[0]
+                    end = points[-1]
 
-        if not start or not end:
-            if len(points) >= 2:
-                start = points[0]
-                end = points[-1]
+            if start and end:
+                start_p = self.transform_point(
+                    point_xy(start)
+                )
+                end_p = self.transform_point(
+                    point_xy(end)
+                )
+                engine.line(
+                    start_p,
+                    end_p,
+                    width=main_width,
+                    fill=main_fill,
+                    roughness=1.0,
+                    passes=2 if is_focus else 1,
+                )
 
-        if not start or not end:
-            return
-
-        start = self.transform_point(
-            point_xy(start)
-        )
-
-        end = self.transform_point(
-            point_xy(end)
-        )
-
-        engine.line(
-            start,
-            end,
-            width=2,
-            fill=GRAPHITE_LIGHT,
-            roughness=1.0,
-            passes=2,
-        )
+        # 3. Glabella Intersection Cross
+        glabella = self.center_axis.get("glabella") or self.center_axis.get("glabellaCross", {}).get("center")
+        if glabella:
+            gp = self.transform_point(point_xy(glabella))
+            if gp:
+                tick_size = 8.0 * self.transform["scale"]
+                engine.line((gp[0] - tick_size, gp[1]), (gp[0] + tick_size, gp[1]), width=1.6 if is_focus else 1.1, fill=GRAPHITE if is_focus else GRAPHITE_LIGHT, roughness=0.4, passes=1)
+                engine.line((gp[0], gp[1] - tick_size), (gp[0], gp[1] + tick_size), width=1.6 if is_focus else 1.1, fill=GRAPHITE if is_focus else GRAPHITE_LIGHT, roughness=0.4, passes=1)
 
     # ========================================================
-    # EYE PLANE
+    # EYE PLANE & TEMPORAL SIDE DISCS
     # ========================================================
 
     def draw_eye_plane(
         self,
         engine,
+        is_focus=False,
     ):
+        main_fill = GRAPHITE if is_focus else GRAPHITE_LIGHT
+        main_width = 2.0 if is_focus else 1.3
 
+        # 1. Horizontal Eye Line across the orbital level
         start = self.eye_plane.get("start")
         end = self.eye_plane.get("end")
 
-        if not start or not end:
-            return
-
-        start = self.transform_point(
-            point_xy(start)
-        )
-
-        end = self.transform_point(
-            point_xy(end)
-        )
-
-        engine.line(
-            start,
-            end,
-            width=2,
-            fill=GRAPHITE_LIGHT,
-            roughness=1.0,
-            passes=2,
-        )
-
-        center = self.eye_plane.get("center")
-
-        if center:
-
-            center = self.transform_point(
-                point_xy(center)
+        if start and end:
+            start_p = self.transform_point(
+                point_xy(start)
             )
+            end_p = self.transform_point(
+                point_xy(end)
+            )
+            eye_vec = (end_p[0] - start_p[0], end_p[1] - start_p[1])
+            ext_sp = (start_p[0] - eye_vec[0] * 0.35, start_p[1] - eye_vec[1] * 0.35)
+            ext_ep = (end_p[0] + eye_vec[0] * 0.35, end_p[1] + eye_vec[1] * 0.35)
+            engine.line(
+                ext_sp,
+                ext_ep,
+                width=main_width,
+                fill=main_fill,
+                roughness=0.9,
+                passes=2 if is_focus else 1,
+            )
+
+            center = self.eye_plane.get("center")
+            if center:
+                center_p = self.transform_point(
+                    point_xy(center)
+                )
+                engine.ellipse(
+                    center_p,
+                    4.5,
+                    4.5,
+                    width=1.2,
+                    fill=GRAPHITE,
+                    roughness=0.2,
+                    passes=1,
+                )
+
+        # 2. Andrew Loomis Signature Temporal Side Discs (Side Planes)
+        side_planes = self.loomis.get("sidePlanes", {})
+        temp_discs = side_planes.get("temporalDiscs", {})
+
+        for side_name in ("left", "right"):
+            disc = temp_discs.get(side_name)
+            if not disc:
+                continue
+
+            disc_center = self.transform_point(point_xy(disc.get("center")))
+            if not disc_center:
+                continue
+
+            rx = float(disc.get("radiusX", 40)) * self.transform["scale"]
+            ry = float(disc.get("radiusY", 60)) * self.transform["scale"]
+            angle = float(disc.get("angle", 0))
 
             engine.ellipse(
-                center,
-                5,
-                5,
-                width=1,
-                fill=GRAPHITE,
-                roughness=0.2,
-                passes=1,
+                disc_center,
+                rx,
+                ry,
+                width=main_width,
+                fill=main_fill,
+                roughness=0.85,
+                passes=2 if is_focus else 1,
+                rotation=angle,
             )
 
+            # 4-quadrant cross
+            vc = disc.get("verticalCross", {})
+            if vc.get("top") and vc.get("bottom"):
+                vt = self.transform_point(point_xy(vc["top"]))
+                vb = self.transform_point(point_xy(vc["bottom"]))
+                engine.line(vt, vb, width=1.5 if is_focus else 1.0, fill=GRAPHITE_LIGHT if is_focus else GRAPHITE_FAINT, roughness=0.7, passes=1)
+                engine.ellipse(vb, 3.5, 3.5, width=1.2, fill=GRAPHITE, roughness=0.3, passes=1)
+
+            hc = disc.get("horizontalCross", {})
+            if hc.get("start") and hc.get("end"):
+                hs = self.transform_point(point_xy(hc["start"]))
+                he = self.transform_point(point_xy(hc["end"]))
+                engine.line(hs, he, width=1.5 if is_focus else 1.0, fill=GRAPHITE_LIGHT if is_focus else GRAPHITE_FAINT, roughness=0.7, passes=1)
+
     # ========================================================
-    # JAW
+    # JAW & MANDIBLE BUCKET HANDLE
     # ========================================================
 
     def draw_jaw(
         self,
         engine,
+        is_focus=False,
     ):
+        main_fill = GRAPHITE_DARK if is_focus else GRAPHITE
+        main_width = 2.8 if is_focus else 1.8
 
-        points = self.jaw.get("points")
+        # 1. Loomis Mandible Bucket Handle Rhythm Lines
+        bucket = self.jaw.get("bucketHandle", {})
+        if bucket:
+            left_rhythm = bucket.get("rhythmLeft", [])
+            if len(left_rhythm) >= 3:
+                lr_pts = self.transform_points(left_rhythm)
+                engine.stroke(lr_pts, width=1.8 if is_focus else 1.2, fill=GRAPHITE_LIGHT, roughness=0.85, passes=1)
+
+            right_rhythm = bucket.get("rhythmRight", [])
+            if len(right_rhythm) >= 3:
+                rr_pts = self.transform_points(right_rhythm)
+                engine.stroke(rr_pts, width=1.8 if is_focus else 1.2, fill=GRAPHITE_LIGHT, roughness=0.85, passes=1)
+
+            chin_wedge = bucket.get("chinWedge", [])
+            if len(chin_wedge) >= 3:
+                cw_pts = self.transform_points(chin_wedge)
+                engine.stroke(cw_pts + [cw_pts[0]], width=2.0 if is_focus else 1.3, fill=GRAPHITE, roughness=0.8, passes=1)
+
+        # 2. Asymmetric anatomical jaw contour
+        points = self.jaw.get("actualContour") or self.face_contour.get("jaw") or self.jaw.get("points")
 
         if not points:
-            points = self.jaw.get(
-                "contour"
-            )
-
-        if not points:
-            points = self.face_contour.get(
-                "jaw"
-            )
+            points = self.jaw.get("contour")
 
         if not points:
             return
@@ -827,72 +939,119 @@ class HandDrawnLoomisRenderer:
 
         engine.curve(
             transformed,
-            width=3,
-            fill=GRAPHITE,
-            roughness=1.25,
-            passes=3,
+            width=main_width,
+            fill=main_fill,
+            roughness=1.1,
+            passes=3 if is_focus else 2,
         )
 
     # ========================================================
-    # NOSE
+    # NOSE, KEYSTONE & RULE OF THIRDS
     # ========================================================
 
     def draw_nose(
         self,
         engine,
+        is_focus=False,
     ):
+        main_fill = GRAPHITE_DARK if is_focus else GRAPHITE
+        main_width = 2.4 if is_focus else 1.6
+
+        # 1. Rule of Thirds Horizontal Perspective Guide Lines
+        thirds = self.nose_plane.get("thirds", {})
+        if thirds:
+            for line_name in ("hairline", "brow", "noseBase", "chin"):
+                line_pts = thirds.get(line_name, [])
+                if len(line_pts) >= 2:
+                    t_pts = self.transform_points(line_pts)
+                    engine.stroke(t_pts, width=1.2, fill=GRAPHITE_FAINT, roughness=0.7, passes=1)
+
+        # 2. Glabella Nasal Keystone (Wedge connecting brow to nose bridge)
+        keystone = self.nose_plane.get("keystone", [])
+        if len(keystone) >= 4:
+            ks_pts = self.transform_points(keystone)
+            engine.stroke(ks_pts + [ks_pts[0]], width=1.8 if is_focus else 1.2, fill=GRAPHITE_LIGHT, roughness=0.8, passes=1)
+
+        # 3. 3D Nose Wedge Structure (Bridge axis & under-plane floor)
+        under_plane = self.nose_plane.get("underPlane", [])
+        if len(under_plane) >= 3:
+            up_pts = self.transform_points(under_plane)
+            engine.stroke(up_pts + [up_pts[0]], width=2.0 if is_focus else 1.3, fill=GRAPHITE, roughness=0.8, passes=2 if is_focus else 1)
+
+        # 4. Accurate Nose Contours
         nose_data = self.nose
         bridge = nose_data.get("bridge", [])
         if bridge:
-            engine.curve(self.transform_points(bridge), width=2, fill=GRAPHITE, roughness=0.8, passes=2)
+            engine.curve(self.transform_points(bridge), width=main_width, fill=main_fill, roughness=0.8, passes=2)
         l_cnt = nose_data.get("leftContour", [])
         if l_cnt:
-            engine.curve(self.transform_points(l_cnt), width=2, fill=GRAPHITE, roughness=0.8, passes=2)
+            engine.curve(self.transform_points(l_cnt), width=main_width * 0.9, fill=main_fill, roughness=0.8, passes=2)
         r_cnt = nose_data.get("rightContour", [])
         if r_cnt:
-            engine.curve(self.transform_points(r_cnt), width=2, fill=GRAPHITE, roughness=0.8, passes=2)
+            engine.curve(self.transform_points(r_cnt), width=main_width * 0.9, fill=main_fill, roughness=0.8, passes=2)
         lo_cnt = nose_data.get("lowerContour", [])
         if lo_cnt:
-            engine.curve(self.transform_points(lo_cnt), width=2, fill=GRAPHITE, roughness=0.8, passes=2)
+            engine.curve(self.transform_points(lo_cnt), width=main_width, fill=main_fill, roughness=0.8, passes=2)
 
     # ========================================================
-    # MOUTH
+    # MOUTH & DENTAL MUZZLE
     # ========================================================
 
     def draw_mouth(
         self,
         engine,
+        is_focus=False,
     ):
-        mouth = self.mouth
-        groups = [
-            mouth.get("upperLip"),
-            mouth.get("lowerLip"),
-            mouth.get("innerUpper"),
-            mouth.get("innerLower"),
-            mouth.get("outer"),
-        ]
+        main_fill = GRAPHITE_DARK if is_focus else GRAPHITE
+        main_width = 2.4 if is_focus else 1.6
 
-        for group in groups:
-            if not isinstance(group, list):
-                continue
-            points = self.transform_points(group)
-            if len(points) < 2:
-                continue
-            engine.curve(
-                points,
-                width=2,
-                fill=GRAPHITE,
-                roughness=1.0,
-                passes=2,
-            )
+        # 1. Cylindrical Dental Muzzle
+        muzzle = self.mouth_plane.get("dentalMuzzle", {})
+        if muzzle:
+            arc_pts = muzzle.get("arc", [])
+            if len(arc_pts) >= 3:
+                m_pts = self.transform_points(arc_pts)
+                engine.curve(m_pts, width=1.5, fill=GRAPHITE_LIGHT, roughness=0.8, passes=1)
+
+            corners = muzzle.get("cornerNodes", {})
+            for corner_key in ("left", "right"):
+                cn = corners.get(corner_key)
+                if cn:
+                    cn_p = self.transform_point(point_xy(cn))
+                    engine.ellipse(cn_p, 3.5, 3.5, width=1.5, fill=GRAPHITE, roughness=0.4, passes=1)
+
+            crease = muzzle.get("labiomentalGroove")
+            if crease:
+                cr_p = self.transform_point(point_xy(crease))
+                w_tick = 16.0 * self.transform["scale"]
+                engine.line((cr_p[0] - w_tick, cr_p[1]), (cr_p[0] + w_tick, cr_p[1]), width=1.4, fill=GRAPHITE_LIGHT, roughness=0.7, passes=1)
+
+            philtrum = muzzle.get("philtrum", [])
+            if len(philtrum) >= 3:
+                ph_pts = self.transform_points(philtrum)
+                engine.stroke(ph_pts, width=1.2, fill=GRAPHITE_FAINT, roughness=0.6, passes=1)
+
+        # 2. Line of Oral Fissure (Lip Closure Seam)
+        fissure = self.mouth_plane.get("dentalMuzzle", {}).get("oralFissure")
+        if fissure and len(fissure) >= 3:
+            f_pts = self.transform_points(fissure)
+            engine.curve(f_pts, width=main_width, fill=main_fill, roughness=0.85, passes=2)
+
+        # 3. Upper and Lower Lip Volumes
+        mouth = self.mouth
+        for group in (mouth.get("upperLip"), mouth.get("lowerLip")):
+            if isinstance(group, list) and len(group) >= 2:
+                points = self.transform_points(group)
+                engine.curve(points, width=main_width * 0.85, fill=GRAPHITE, roughness=0.9, passes=2)
 
     # ========================================================
-    # EYES
+    # EYES & ORBITAL SOCKETS
     # ========================================================
 
     def draw_eyes(
         self,
         engine,
+        is_focus=False,
     ):
         if not isinstance(self.eyes, dict):
             return
@@ -932,6 +1091,23 @@ class HandDrawnLoomisRenderer:
                     passes=2,
                 )
 
+    def draw_orbital_sockets(self, engine, is_focus=False):
+        """Draw Loomis classical trapezoidal eye sockets (orbital cavities)."""
+        if self.analysis and "landmarks" in self.analysis:
+            lms = self.analysis["landmarks"]
+            # Right eye socket (camera left): 107 (upper nasal), 70 (upper temporal), 111 (lower temporal), 119 (lower nasal)
+            # Left eye socket (camera right): 336 (upper nasal), 300 (upper temporal), 340 (lower temporal), 348 (lower nasal)
+            right_orbit = [lms[107], lms[70], lms[111], lms[119]]
+            left_orbit = [lms[336], lms[300], lms[340], lms[348]]
+
+            r_pts = self.transform_points(right_orbit)
+            l_pts = self.transform_points(left_orbit)
+
+            if len(r_pts) >= 4:
+                engine.stroke(r_pts + [r_pts[0]], width=1.5 if is_focus else 1.1, fill=GRAPHITE_LIGHT if is_focus else GRAPHITE_FAINT, roughness=0.7, passes=1)
+            if len(l_pts) >= 4:
+                engine.stroke(l_pts + [l_pts[0]], width=1.5 if is_focus else 1.1, fill=GRAPHITE_LIGHT if is_focus else GRAPHITE_FAINT, roughness=0.7, passes=1)
+
     # ========================================================
     # EYEBROWS
     # ========================================================
@@ -939,6 +1115,7 @@ class HandDrawnLoomisRenderer:
     def draw_eyebrows(
         self,
         engine,
+        is_focus=False,
     ):
 
         if not isinstance(
@@ -971,11 +1148,40 @@ class HandDrawnLoomisRenderer:
 
             engine.curve(
                 points,
-                width=3,
-                fill=GRAPHITE,
-                roughness=1.3,
-                passes=3,
+                width=2.6 if is_focus else 1.8,
+                fill=GRAPHITE_DARK if is_focus else GRAPHITE,
+                roughness=1.2,
+                passes=3 if is_focus else 2,
             )
+
+    # ========================================================
+    # STAGE 7: UNIFIED COMPLETE LOOMIS ARMATURE
+    # ========================================================
+
+    def draw_stage_7_unified_armature(self, engine):
+        """
+        Synthesizes the complete Andrew Loomis head armature with controlled
+        multi-grade graphite hierarchy:
+        - 4H (faint): Cranial sphere, search lines, tilt axis, Rule of Thirds arches
+        - 2H (light): Temporal discs with 4-quadrant cross, brow equator, jaw bucket handle, nose keystone & wedge, orbital eye sockets
+        - HB (medium): Mandible contour, chin front plane wedge, nose bridge & base, oral fissure line & nodes, eyebrow placement
+        """
+        # 1. 4H Construction Foundation
+        self.draw_cranium(engine, is_focus=False)
+        self.draw_center_axis(engine, is_focus=False)
+
+        # 2. 2H Structural Planes
+        self.draw_eye_plane(engine, is_focus=False)
+        self.draw_orbital_sockets(engine, is_focus=False)
+
+        # 3. Mandible, Nose Keystone & Dental Muzzle
+        self.draw_jaw(engine, is_focus=True)
+        self.draw_nose(engine, is_focus=True)
+        self.draw_mouth(engine, is_focus=True)
+
+        # 4. Eyebrows & Eyes
+        self.draw_eyebrows(engine, is_focus=True)
+        self.draw_eyes(engine, is_focus=True)
 
     # ========================================================
     # STAGE RENDERING
@@ -1060,71 +1266,50 @@ class HandDrawnLoomisRenderer:
         )
 
         # ----------------------------------------------------
-        # Stage 1
+        # Progressive Stages 1 to 6
         # ----------------------------------------------------
 
-        if stage_number >= 1:
-            self.draw_cranium(
-                engine
-            )
+        if stage_number < 7:
+            if stage_number >= 1:
+                self.draw_cranium(
+                    engine,
+                    is_focus=(stage_number == 1),
+                )
 
-        # ----------------------------------------------------
-        # Stage 2
-        # ----------------------------------------------------
+            if stage_number >= 2:
+                self.draw_center_axis(
+                    engine,
+                    is_focus=(stage_number == 2),
+                )
 
-        if stage_number >= 2:
-            self.draw_center_axis(
-                engine
-            )
+            if stage_number >= 3:
+                self.draw_eye_plane(
+                    engine,
+                    is_focus=(stage_number == 3),
+                )
 
-        # ----------------------------------------------------
-        # Stage 3
-        # ----------------------------------------------------
+            if stage_number >= 4:
+                self.draw_jaw(
+                    engine,
+                    is_focus=(stage_number == 4),
+                )
 
-        if stage_number >= 3:
-            self.draw_eye_plane(
-                engine
-            )
+            if stage_number >= 5:
+                self.draw_nose(
+                    engine,
+                    is_focus=(stage_number == 5),
+                )
 
-        # ----------------------------------------------------
-        # Stage 4
-        # ----------------------------------------------------
-
-        if stage_number >= 4:
-            self.draw_jaw(
-                engine
-            )
-
-        # ----------------------------------------------------
-        # Stage 5
-        # ----------------------------------------------------
-
-        if stage_number >= 5:
-            self.draw_nose(
-                engine
-            )
-
-        # ----------------------------------------------------
-        # Stage 6
-        # ----------------------------------------------------
-
-        if stage_number >= 6:
-            self.draw_mouth(
-                engine
-            )
-
-        # ----------------------------------------------------
-        # Stage 7
-        # ----------------------------------------------------
-
-        if stage_number >= 7:
-            self.draw_eyes(
-                engine
-            )
-
-            self.draw_eyebrows(
-                engine
-            )
+            if stage_number >= 6:
+                self.draw_mouth(
+                    engine,
+                    is_focus=(stage_number == 6),
+                )
+        else:
+            # ----------------------------------------------------
+            # Stage 7: Unified Master Loomis Scaffolding
+            # ----------------------------------------------------
+            self.draw_stage_7_unified_armature(engine)
 
         # Apply the graphite surface treatment after all construction
         # strokes have been drawn. This adds very subtle graphite dust,

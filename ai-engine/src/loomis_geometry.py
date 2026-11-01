@@ -683,32 +683,97 @@ class LoomisGeometry:
         }
 
     # =========================================================
-    # CENTER AXIS
+    # CENTER AXIS & BROW EQUATOR
     # =========================================================
 
-    def calculate_center_axis(self):
+    def calculate_center_axis(self, cranium=None):
 
         forehead = self.landmark(10)
-
+        glabella = self.landmark(9)
         nose_root = self.landmark(168)
-
         nose_tip = self.landmark(4)
-
         chin = self.landmark(152)
 
-        return {
+        # Facial midline tilt vector (chin to forehead, pointing up in 2D image coordinates)
+        axis_angle_deg = self.angle(chin, forehead)
+        axis_angle_rad = math.radians(axis_angle_deg)
 
+        # Unit vector pointing UP along the facial axis
+        vx_up = math.cos(axis_angle_rad)
+        vy_up = math.sin(axis_angle_rad)
+
+        # Unit vector pointing toward subject's left (camera right, perpendicular to midline)
+        brow_angle_deg = axis_angle_deg + 90.0
+        brow_angle_rad = math.radians(brow_angle_deg)
+        ux = math.cos(brow_angle_rad)
+        uy = math.sin(brow_angle_rad)
+
+        # Unit vector pointing DOWN along the facial axis (toward chin)
+        vx_down = -vx_up
+        vy_down = -vy_up
+
+        pitch = float(self.pose.get("pitch", 0.0) or 0.0)
+        roll = float(self.pose.get("roll", 0.0) or 0.0)
+        yaw = float(self.pose.get("yaw", 0.0) or 0.0)
+
+        face_height = self.distance(forehead, chin)
+        radius = float(cranium.get("radiusX", face_height * 0.48)) if cranium else (face_height * 0.48)
+
+        # -----------------------------------------------------
+        # 3D BROW EQUATOR (Loomis Horizontal Great Circle)
+        # Passes through glabella (landmark 9) across cranial ball.
+        # Bows down if pitch > 0 (looking down), bows up if pitch < 0.
+        # -----------------------------------------------------
+        brow_pts = []
+        glab_x = glabella["x"]
+        glab_y = glabella["y"]
+        pitch_rad = math.radians(pitch)
+        sin_pitch = math.sin(pitch_rad)
+
+        samples = [
+            -0.95, -0.80, -0.65, -0.50, -0.35, -0.18,
+            0.0,
+            0.18, 0.35, 0.50, 0.65, 0.80, 0.95,
+        ]
+
+        for s in samples:
+            u_offset = s * (radius * 0.95)
+            z_depth = math.sqrt(max(0.0, 1.0 - (s * s)))
+            v_offset = (z_depth - 1.0) * sin_pitch * (radius * 0.70)
+            pt_x = glab_x + (u_offset * ux) + (v_offset * vx_down)
+            pt_y = glab_y + (u_offset * uy) + (v_offset * vy_down)
+            brow_pts.append(self.point(pt_x, pt_y))
+
+        brow_equator = {
+            "center": glabella,
+            "points": brow_pts,
+            "bow": round(sin_pitch * radius * 0.70, 3),
+            "pitch": round(pitch, 2),
+            "roll": round(roll, 2),
+            "angle": round(brow_angle_deg, 3),
+        }
+
+        meridian_points = [
+            forehead,
+            glabella,
+            nose_root,
+            nose_tip,
+            self.landmark(0),
+            self.landmark(13),
+            self.landmark(14),
+            chin,
+        ]
+
+        return {
             "points": [
                 forehead,
                 nose_root,
                 nose_tip,
                 chin,
             ],
-
+            "meridian": meridian_points,
             "start": forehead,
-
             "end": chin,
-
             "angle": round(
                 self.angle(
                     forehead,
@@ -716,10 +781,15 @@ class LoomisGeometry:
                 ),
                 3
             ),
-
             "noseRoot": nose_root,
-
             "noseTip": nose_tip,
+            "glabella": glabella,
+            "glabellaCross": {
+                "center": glabella,
+                "meridianPoint": glabella,
+                "equatorPoint": glabella,
+            },
+            "browEquator": brow_equator,
         }
 
     # =========================================================
@@ -729,30 +799,26 @@ class LoomisGeometry:
     def calculate_cranium(self, eyes):
 
         forehead = self.landmark(10)
-
         eye_center = eyes["center"]
-
         left_face = self.landmark(234)
-
         right_face = self.landmark(454)
+        chin = self.landmark(152)
 
         face_width = self.distance(
             left_face,
             right_face
         )
 
-        # In Andrew Loomis 3D cranial construction, the cranial ball is a 3D sphere.
-        # When viewed from 3/4 or profile angles, 2D face_width is foreshortened by cos(yaw),
-        # but the 3D spherical cranial volume does not shrink.
         yaw = float(self.pose.get("yaw", 0.0) or 0.0)
+        pitch = float(self.pose.get("pitch", 0.0) or 0.0)
+        roll = float(self.pose.get("roll", 0.0) or 0.0)
+
         cos_yaw = max(0.55, math.cos(math.radians(abs(yaw))))
         unshortened_width = face_width / cos_yaw
 
-        # In classical Loomis proportions, cranial sphere radius is ~0.48 of total face height
-        face_height = self.distance(forehead, self.landmark(152))
+        face_height = self.distance(forehead, chin)
         radius = max(unshortened_width / 2.0, face_height * 0.48)
 
-        # The cranial center is positioned above the eye plane
         center = self.point(
             eye_center["x"],
             eye_center["y"] - radius * 0.52
@@ -763,42 +829,78 @@ class LoomisGeometry:
         vertical_adjustment = desired_top - current_top
         center["y"] += vertical_adjustment * 0.35
 
+        # -----------------------------------------------------
+        # 3D CRANIAL TILT AXIS & VERTEX POLE
+        # -----------------------------------------------------
+        tilt_angle_deg = self.angle(chin, forehead)
+        tilt_angle_rad = math.radians(tilt_angle_deg)
+        ux_tilt = math.cos(tilt_angle_rad)
+        uy_tilt = math.sin(tilt_angle_rad)
+
+        top_pole = self.point(
+            center["x"] + radius * ux_tilt,
+            center["y"] + radius * uy_tilt
+        )
+        bottom_pole = self.point(
+            center["x"] - radius * ux_tilt,
+            center["y"] - radius * uy_tilt
+        )
+
+        tilt_axis = {
+            "top": top_pole,
+            "bottom": bottom_pole,
+            "angle": round(tilt_angle_deg, 3),
+        }
+
+        cap_rx = radius * 0.28
+        cap_ry = radius * 0.28 * max(0.20, min(0.95, abs(math.sin(math.radians(pitch + 18.0)))))
+        pole_ellipse = {
+            "center": top_pole,
+            "radiusX": round(cap_rx, 3),
+            "radiusY": round(cap_ry, 3),
+            "angle": round(tilt_angle_deg + 90.0, 3),
+        }
+
+        search_radii = [
+            round(radius * 0.985, 3),
+            round(radius * 1.015, 3),
+        ]
+
         return {
-
             "center": center,
-
             "radiusX": round(
                 radius,
                 3
             ),
-
             "radiusY": round(
                 radius,
                 3
             ),
-
+            "radius": round(
+                radius,
+                3
+            ),
             "diameter": round(
                 radius * 2,
                 3
             ),
-
+            "tiltAxis": tilt_axis,
+            "poleEllipse": pole_ellipse,
+            "searchRadii": search_radii,
             "anchor": {
                 "forehead":
                     forehead,
-
                 "eyeCenter":
                     eye_center,
-
                 "leftFace":
                     left_face,
-
                 "rightFace":
                     right_face,
             },
         }
 
     # =========================================================
-    # SIDE PLANES
+    # SIDE PLANES & TEMPORAL DISCS
     # =========================================================
 
     def calculate_side_planes(
@@ -808,16 +910,9 @@ class LoomisGeometry:
     ):
 
         center = cranium["center"]
-
         radius = cranium["radiusX"]
-
         left_face = self.landmark(234)
-
         right_face = self.landmark(454)
-
-        # Instead of arbitrary large triangles,
-        # the side-plane construction is anchored
-        # around the actual face boundaries.
 
         left_upper = self.interpolate(
             center,
@@ -832,41 +927,94 @@ class LoomisGeometry:
         )
 
         left_inner = eye_plane["center"]
-
         right_inner = eye_plane["center"]
 
-        return {
+        # -----------------------------------------------------
+        # ANDREW LOOMIS TEMPORAL SIDE DISCS
+        # -----------------------------------------------------
+        yaw = float(self.pose.get("yaw", 0.0) or 0.0)
+        tilt_angle_deg = cranium.get("tiltAxis", {}).get("angle", self.angle(self.landmark(152), self.landmark(10)))
+        tilt_angle_rad = math.radians(tilt_angle_deg)
 
+        vx_up = math.cos(tilt_angle_rad)
+        vy_up = math.sin(tilt_angle_rad)
+
+        brow_angle_rad = math.radians(tilt_angle_deg + 90.0)
+        hx = math.cos(brow_angle_rad)
+        hy = math.sin(brow_angle_rad)
+
+        left_disc_center = self.interpolate(center, left_face, 0.70)
+        right_disc_center = self.interpolate(center, right_face, 0.70)
+
+        r_vertical = radius * 0.58
+
+        left_aspect = max(0.18, min(0.92, 0.28 + (0.52 * math.sin(math.radians(max(0.0, yaw + 15.0))))))
+        right_aspect = max(0.18, min(0.92, 0.28 + (0.52 * math.sin(math.radians(max(0.0, -yaw + 15.0))))))
+
+        left_rx = r_vertical * left_aspect
+        left_ry = r_vertical
+
+        right_rx = r_vertical * right_aspect
+        right_ry = r_vertical
+
+        left_v_top = self.point(left_disc_center["x"] + r_vertical * vx_up, left_disc_center["y"] + r_vertical * vy_up)
+        left_v_bot = self.point(left_disc_center["x"] - r_vertical * vx_up, left_disc_center["y"] - r_vertical * vy_up)
+        left_h_start = self.point(left_disc_center["x"] - left_rx * hx, left_disc_center["y"] - left_rx * hy)
+        left_h_end = self.point(left_disc_center["x"] + left_rx * hx, left_disc_center["y"] + left_rx * hy)
+
+        right_v_top = self.point(right_disc_center["x"] + r_vertical * vx_up, right_disc_center["y"] + r_vertical * vy_up)
+        right_v_bot = self.point(right_disc_center["x"] - r_vertical * vx_up, right_disc_center["y"] - r_vertical * vy_up)
+        right_h_start = self.point(right_disc_center["x"] - right_rx * hx, right_disc_center["y"] - right_rx * hy)
+        right_h_end = self.point(right_disc_center["x"] + right_rx * hx, right_disc_center["y"] + right_rx * hy)
+
+        temporal_discs = {
             "left": {
+                "center": left_disc_center,
+                "radiusX": round(left_rx, 3),
+                "radiusY": round(left_ry, 3),
+                "angle": round(tilt_angle_deg, 3),
+                "verticalCross": {"top": left_v_top, "bottom": left_v_bot},
+                "horizontalCross": {"start": left_h_start, "end": left_h_end},
+                "hinge": left_v_bot,
+                "visible": True,
+            },
+            "right": {
+                "center": right_disc_center,
+                "radiusX": round(right_rx, 3),
+                "radiusY": round(right_ry, 3),
+                "angle": round(tilt_angle_deg, 3),
+                "verticalCross": {"top": right_v_top, "bottom": right_v_bot},
+                "horizontalCross": {"start": right_h_start, "end": right_h_end},
+                "hinge": right_v_bot,
+                "visible": True,
+            },
+        }
 
+        return {
+            "left": {
                 "upper":
                     left_upper,
-
                 "lower":
                     left_face,
-
                 "inner":
                     left_inner,
             },
-
             "right": {
-
                 "upper":
                     right_upper,
-
                 "lower":
                     right_face,
-
                 "inner":
                     right_inner,
             },
-
             "sphereRadius":
                 radius,
+            "temporalDiscs":
+                temporal_discs,
         }
 
     # =========================================================
-    # JAW CONSTRUCTION
+    # JAW CONSTRUCTION & BUCKET HANDLE
     # =========================================================
 
     def calculate_jaw(
@@ -888,13 +1036,6 @@ class LoomisGeometry:
         right_cheek = (
             face_contour["rightCheek"]
         )
-
-        # -----------------------------------------------------
-        # The actual contour is the primary jaw geometry.
-        #
-        # We additionally create a simplified Loomis
-        # structural path using actual contour points.
-        # -----------------------------------------------------
 
         left_path = [
             self.landmark(234),
@@ -924,10 +1065,6 @@ class LoomisGeometry:
             self.landmark(152),
         ]
 
-        # Structural jaw attachment points are selected
-        # directly from the contour instead of being
-        # invented with percentage-based coordinates.
-
         left_attachment = self.landmark(
             172
         )
@@ -936,93 +1073,195 @@ class LoomisGeometry:
             365
         )
 
-        return {
+        # -----------------------------------------------------
+        # LOOMIS MANDIBLE BUCKET HANDLE & CHIN WEDGE
+        # -----------------------------------------------------
+        hinge_left = self.landmark(234)
+        gonion_left = self.landmark(172)
+        chin_left = self.landmark(148)
+        chin_center = chin
+        chin_right = self.landmark(377)
+        gonion_right = self.landmark(365)
+        hinge_right = self.landmark(454)
 
+        chin_wedge = [
+            chin_left,
+            chin_center,
+            chin_right,
+            self.landmark(18),
+        ]
+
+        rhythm_left = [
+            hinge_left,
+            gonion_left,
+            chin_left,
+            chin_center,
+        ]
+
+        rhythm_right = [
+            hinge_right,
+            gonion_right,
+            chin_right,
+            chin_center,
+        ]
+
+        left_gonion_dist = self.distance(chin_center, gonion_left)
+        right_gonion_dist = self.distance(chin_center, gonion_right)
+        asymmetry_ratio = round(left_gonion_dist / max(1.0, right_gonion_dist), 3)
+
+        bucket_handle = {
+            "hingeLeft": hinge_left,
+            "gonionLeft": gonion_left,
+            "chinLeft": chin_left,
+            "chinCenter": chin_center,
+            "chinRight": chin_right,
+            "gonionRight": gonion_right,
+            "hingeRight": hinge_right,
+            "chinWedge": chin_wedge,
+            "rhythmLeft": rhythm_left,
+            "rhythmRight": rhythm_right,
+            "asymmetryRatio": asymmetry_ratio,
+        }
+
+        return {
             "leftAttachment":
                 left_attachment,
-
             "rightAttachment":
                 right_attachment,
-
             "leftCheek":
                 left_cheek,
-
             "rightCheek":
                 right_cheek,
-
             "chin":
                 chin,
-
             "leftPath":
                 left_path,
-
             "rightPath":
                 right_path,
-
             "actualContour":
                 actual,
-
             "eyePlaneReference":
                 eye_plane["center"],
+            "bucketHandle":
+                bucket_handle,
         }
 
     # =========================================================
-    # NOSE CONSTRUCTION
+    # NOSE CONSTRUCTION & RULE OF THIRDS
     # =========================================================
 
     def calculate_nose_plane(
         self,
         nose,
-        eye_plane
+        eye_plane,
+        cranium=None
     ):
 
+        root = nose["root"]
+        tip = nose["tip"]
+        left_base = nose["leftBase"]
+        right_base = nose["rightBase"]
+        center = nose["center"]
+
+        # -----------------------------------------------------
+        # RULE OF THIRDS PERSPECTIVE GUIDE LINES
+        # -----------------------------------------------------
+        pitch = float(self.pose.get("pitch", 0.0) or 0.0)
+        face_width = self.distance(self.landmark(234), self.landmark(454))
+        tilt_angle_deg = cranium.get("tiltAxis", {}).get("angle", self.angle(self.landmark(152), self.landmark(10))) if cranium else self.angle(self.landmark(152), self.landmark(10))
+        tilt_angle_rad = math.radians(tilt_angle_deg)
+        brow_angle_rad = math.radians(tilt_angle_deg + 90.0)
+
+        hx = math.cos(brow_angle_rad)
+        hy = math.sin(brow_angle_rad)
+        vx_down = -math.cos(tilt_angle_rad)
+        vy_down = -math.sin(tilt_angle_rad)
+
+        sin_pitch = math.sin(math.radians(pitch))
+        radius = float(cranium.get("radiusX", 130.0)) if cranium else 130.0
+
+        def _make_third_arc(anchor_point):
+            ax = anchor_point["x"]
+            ay = anchor_point["y"]
+            pts = []
+            for s in (-0.85, -0.50, 0.0, 0.50, 0.85):
+                u_off = s * (face_width * 0.42)
+                z_depth = math.sqrt(max(0.0, 1.0 - (s * s)))
+                v_off = (z_depth - 1.0) * sin_pitch * (radius * 0.50)
+                pts.append(self.point(ax + u_off * hx + v_off * vx_down, ay + u_off * hy + v_off * vy_down))
+            return pts
+
+        thirds = {
+            "hairline": _make_third_arc(self.landmark(10)),
+            "brow": _make_third_arc(self.landmark(9)),
+            "noseBase": _make_third_arc(self.landmark(2)),
+            "chin": _make_third_arc(self.landmark(152)),
+        }
+
+        keystone = [
+            self.landmark(107),
+            self.landmark(336),
+            self.landmark(6),
+            self.landmark(168),
+        ]
+
+        under_plane = [
+            tip,
+            left_base,
+            self.landmark(2),
+            right_base,
+        ]
+
+        bridge_points = [
+            self.landmark(168),
+            self.landmark(6),
+            self.landmark(197),
+            self.landmark(195),
+            self.landmark(5),
+            tip,
+        ]
+
         return {
-
             "root":
-                nose["root"],
-
+                root,
             "tip":
-                nose["tip"],
-
+                tip,
             "leftBase":
-                nose["leftBase"],
-
+                left_base,
             "rightBase":
-                nose["rightBase"],
-
+                right_base,
             "center":
-                nose["center"],
-
+                center,
             "bridgeAxis": {
-
                 "start":
-                    nose["root"],
-
+                    root,
                 "end":
-                    nose["tip"],
+                    tip,
             },
-
             "baseLine": {
-
                 "start":
-                    nose["leftBase"],
-
+                    left_base,
                 "end":
-                    nose["rightBase"],
+                    right_base,
             },
-
             "eyeToNose": {
-
                 "start":
                     eye_plane["center"],
-
                 "end":
-                    nose["root"],
+                    root,
             },
+            "thirds":
+                thirds,
+            "keystone":
+                keystone,
+            "underPlane":
+                under_plane,
+            "bridge":
+                bridge_points,
         }
 
     # =========================================================
-    # MOUTH CONSTRUCTION
+    # MOUTH CONSTRUCTION & DENTAL MUZZLE
     # =========================================================
 
     def calculate_mouth_plane(
@@ -1032,34 +1271,74 @@ class LoomisGeometry:
         chin
     ):
 
-        return {
+        left_corner = mouth["leftCorner"]
+        right_corner = mouth["rightCorner"]
+        mouth_center = mouth["center"]
 
+        # -----------------------------------------------------
+        # DENTAL MUZZLE (CYLINDRICAL BARREL) & NODES
+        # -----------------------------------------------------
+        muzzle_arc = [
+            left_corner,
+            self.landmark(37),
+            self.landmark(0),
+            self.landmark(267),
+            right_corner,
+        ]
+
+        oral_fissure = [
+            left_corner,
+            self.landmark(78),
+            self.landmark(191),
+            self.landmark(80),
+            self.landmark(81),
+            self.landmark(13),
+            self.landmark(311),
+            self.landmark(310),
+            self.landmark(415),
+            self.landmark(308),
+            right_corner,
+        ]
+
+        philtrum = [
+            self.landmark(2),
+            self.landmark(37),
+            self.landmark(0),
+            self.landmark(267),
+        ]
+
+        dental_muzzle = {
+            "arc": muzzle_arc,
+            "cornerNodes": {
+                "left": left_corner,
+                "right": right_corner,
+            },
+            "oralFissure": oral_fissure,
+            "philtrum": philtrum,
+            "labiomentalGroove": self.landmark(18),
+        }
+
+        return {
             "upperAnchor":
                 nose["tip"],
-
             "mouthCenter":
-                mouth["center"],
-
+                mouth_center,
             "chin":
                 chin,
-
             "axis": {
-
                 "start":
                     nose["tip"],
-
                 "end":
                     chin,
             },
-
             "mouthLine": {
-
                 "start":
-                    mouth["leftCorner"],
-
+                    left_corner,
                 "end":
-                    mouth["rightCorner"],
+                    right_corner,
             },
+            "dentalMuzzle":
+                dental_muzzle,
         }
 
     # =========================================================
@@ -1094,13 +1373,15 @@ class LoomisGeometry:
             self.calculate_mouth()
         )
 
-        center_axis = (
-            self.calculate_center_axis()
-        )
-
         cranium = (
             self.calculate_cranium(
                 eyes
+            )
+        )
+
+        center_axis = (
+            self.calculate_center_axis(
+                cranium=cranium
             )
         )
 
@@ -1121,7 +1402,8 @@ class LoomisGeometry:
         nose_plane = (
             self.calculate_nose_plane(
                 nose,
-                eye_plane
+                eye_plane,
+                cranium=cranium
             )
         )
 

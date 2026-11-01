@@ -144,6 +144,83 @@ class TestLoomisPipelineAndStages(unittest.TestCase):
             self.assertIsInstance(img, Image.Image, f"Stage {stage_num} must produce a PIL Image")
             self.assertEqual(img.size, (1000, 1200), f"Stage {stage_num} must be 1000x1200")
 
+    def test_10_milestone_1_loomis_3d_perspective_geometry(self):
+        """
+        Verify Milestone 1 enriched 3D perspective-aware Loomis geometry (Stages 1-7):
+        - Cranium 3D tilt axis and vertex pole cap
+        - 3D brow equator curve with perspective bowing & glabella cross
+        - Temporal side discs with 4-quadrant cross & mandibular hinge
+        - Mandible bucket-handle rhythm & chin front plane wedge
+        - Rule of Thirds horizontal guide arches & glabella keystone
+        - Cylindrical dental muzzle arc & corner modiolus nodes
+        """
+        loomis = self.construction.get("loomis", {})
+
+        # 1. Cranium
+        cranium = loomis.get("cranium", {})
+        self.assertIn("tiltAxis", cranium, "Cranium must contain 3D tiltAxis")
+        self.assertIn("top", cranium["tiltAxis"])
+        self.assertIn("bottom", cranium["tiltAxis"])
+        self.assertIn("poleEllipse", cranium, "Cranium must contain 3D vertex poleEllipse")
+        self.assertIn("searchRadii", cranium, "Cranium must contain searchRadii")
+
+        # 2. Center Axis & Brow Equator
+        center_axis = loomis.get("centerAxis", {})
+        self.assertIn("browEquator", center_axis, "Center axis must contain 3D browEquator")
+        eq = center_axis["browEquator"]
+        self.assertIn("points", eq)
+        self.assertGreaterEqual(len(eq["points"]), 5, "Brow equator must have >= 5 curve points")
+        self.assertIn("bow", eq)
+        self.assertIn("glabellaCross", center_axis, "Center axis must contain glabellaCross")
+
+        # 3. Side Planes & Temporal Discs
+        side_planes = loomis.get("sidePlanes", {})
+        self.assertIn("temporalDiscs", side_planes, "Side planes must contain temporalDiscs")
+        discs = side_planes["temporalDiscs"]
+        for side in ("left", "right"):
+            self.assertIn(side, discs)
+            self.assertIn("center", discs[side])
+            self.assertIn("verticalCross", discs[side])
+            self.assertIn("horizontalCross", discs[side])
+            self.assertIn("hinge", discs[side])
+
+        # 4. Jaw & Bucket Handle
+        jaw = loomis.get("jaw", {})
+        self.assertIn("bucketHandle", jaw, "Jaw must contain bucketHandle")
+        bh = jaw["bucketHandle"]
+        for key in ("hingeLeft", "gonionLeft", "chinLeft", "chinCenter", "chinRight", "gonionRight", "hingeRight"):
+            self.assertIn(key, bh)
+        self.assertIn("chinWedge", bh)
+        self.assertIn("rhythmLeft", bh)
+        self.assertIn("rhythmRight", bh)
+
+        # 5. Nose Plane & Rule of Thirds
+        nose_plane = loomis.get("nosePlane", {})
+        self.assertIn("thirds", nose_plane, "Nose plane must contain Rule of Thirds guide lines")
+        thirds = nose_plane["thirds"]
+        for line_name in ("hairline", "brow", "noseBase", "chin"):
+            self.assertIn(line_name, thirds)
+            self.assertGreaterEqual(len(thirds[line_name]), 2)
+        self.assertIn("keystone", nose_plane, "Nose plane must contain glabella keystone")
+        self.assertIn("underPlane", nose_plane, "Nose plane must contain underPlane")
+
+        # 6. Mouth Plane & Dental Muzzle
+        mouth_plane = loomis.get("mouthPlane", {})
+        self.assertIn("dentalMuzzle", mouth_plane, "Mouth plane must contain dentalMuzzle")
+        muzzle = mouth_plane["dentalMuzzle"]
+        self.assertIn("arc", muzzle)
+        self.assertIn("cornerNodes", muzzle)
+        self.assertIn("oralFissure", muzzle)
+        self.assertIn("labiomentalGroove", muzzle)
+
+        # 7. Render all stages 1 through 7
+        ref_img = AI_ENGINE_DIR / "input" / "reference.jpg"
+        renderer = HandDrawnLoomisRenderer(self.construction, analysis=self.analysis, img_path=ref_img)
+        for s in range(1, 8):
+            img = renderer.render_stage(s)
+            self.assertIsInstance(img, Image.Image, f"Stage {s} must render a PIL Image")
+            self.assertEqual(img.size, (1000, 1200))
+
 
 if __name__ == "__main__":
     unittest.main()
