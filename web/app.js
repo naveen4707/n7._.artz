@@ -19,6 +19,8 @@
     bwPhotoUrl: '/input/reference_bw.jpg',
     referenceMode: 'bw',
     selectedFile: null,
+    curriculum: {},
+    checkpoints: JSON.parse(localStorage.getItem('loomis_checkpoints') || '{}'),
     telemetry: {
       yaw: '-1.2°',
       pitch: '+2.5°',
@@ -135,12 +137,22 @@
     btnCoachTechnique: document.getElementById('btnCoachTechnique'),
     btnCoachMistakes: document.getElementById('btnCoachMistakes'),
     btnCoachPencil: document.getElementById('btnCoachPencil'),
+    // Interactive Student Practice Checkpoint elements
+    checkpointCard: document.getElementById('checkpointCard'),
+    checkpointStageBadge: document.getElementById('checkpointStageBadge'),
+    masteryBadge: document.getElementById('masteryBadge'),
+    checkpointScoreText: document.getElementById('checkpointScoreText'),
+    checkpointProgressFill: document.getElementById('checkpointProgressFill'),
+    checkpointChecklist: document.getElementById('checkpointChecklist'),
+    checkpointProtipText: document.getElementById('checkpointProtipText'),
+    btnVerifyCheckpoint: document.getElementById('btnVerifyCheckpoint'),
   };
 
   // ── INITIALIZATION ────────────────────────────────────────────────────
   async function init() {
     setupEventListeners();
     await fetchStages();
+    await fetchCurriculum();
     await fetchPresets();
     await fetchValidation();
     checkEngineStatus();
@@ -160,6 +172,18 @@
       }
     } catch (err) {
       console.warn('Could not fetch stage metadata, using fallback:', err);
+    }
+  }
+
+  async function fetchCurriculum() {
+    try {
+      const res = await fetch('/api/lesson/curriculum');
+      const data = await res.json();
+      if (data && data.stages) {
+        state.curriculum = data.stages;
+      }
+    } catch (err) {
+      console.warn('Could not fetch lesson curriculum:', err);
     }
   }
 
@@ -419,6 +443,140 @@
     // Side by side label
     const sideStageNum = document.querySelector('.sideStageNum');
     if (sideStageNum) sideStageNum.textContent = stageNum === 0 ? 'B&W Ref' : stageNum;
+
+    // Render interactive practice checkpoint rubric for this stage
+    renderCheckpointRubric(stageNum);
+  }
+
+  // ── INTERACTIVE DRAWING CHECKPOINT & PRACTICE RUBRIC ──────────────────
+  function renderCheckpointRubric(stageNum) {
+    if (!els.checkpointCard) return;
+    if (stageNum === 0) {
+      els.checkpointCard.style.display = 'none';
+      return;
+    }
+    els.checkpointCard.style.display = 'block';
+
+    const curr = (state.curriculum && state.curriculum[stageNum]) || null;
+    if (els.checkpointStageBadge) {
+      els.checkpointStageBadge.textContent = `Stage ${stageNum}`;
+    }
+
+    if (!state.checkpoints[stageNum]) {
+      state.checkpoints[stageNum] = [false, false, false];
+    }
+    const stageChecks = state.checkpoints[stageNum];
+
+    // Checklist items
+    if (els.checkpointChecklist) {
+      els.checkpointChecklist.innerHTML = '';
+      const checklistItems = (curr && curr.checkpoint_checklist && curr.checkpoint_checklist.length === 3)
+        ? curr.checkpoint_checklist
+        : [
+            { id: 'c1', text: 'Geometric landmarks accurately aligned in 3D perspective.' },
+            { id: 'c2', text: 'Pencil pressure matches recommended graphite hardness.' },
+            { id: 'c3', text: 'Proportions verified with Andrew Loomis sighting rules.' }
+          ];
+
+      checklistItems.forEach((item, idx) => {
+        const isChecked = Boolean(stageChecks[idx]);
+        const itemEl = document.createElement('div');
+        itemEl.className = `checkpoint-item ${isChecked ? 'checked' : ''}`;
+        itemEl.dataset.index = idx;
+        itemEl.innerHTML = `
+          <div class="checkpoint-checkbox">${isChecked ? '✓' : ''}</div>
+          <div class="checkpoint-item-text">${item.text}</div>
+        `;
+
+        itemEl.addEventListener('click', () => {
+          toggleCheckpointItem(stageNum, idx);
+        });
+
+        els.checkpointChecklist.appendChild(itemEl);
+      });
+    }
+
+    // Studio Pro Tip
+    if (els.checkpointProtipText) {
+      const tip = (curr && curr.pro_tips && curr.pro_tips[0]) || 'Step back 4 feet to verify balance.';
+      els.checkpointProtipText.textContent = tip;
+    }
+
+    updateCheckpointProgress(stageNum);
+  }
+
+  function toggleCheckpointItem(stageNum, idx) {
+    if (!state.checkpoints[stageNum]) {
+      state.checkpoints[stageNum] = [false, false, false];
+    }
+    state.checkpoints[stageNum][idx] = !state.checkpoints[stageNum][idx];
+    try {
+      localStorage.setItem('loomis_checkpoints', JSON.stringify(state.checkpoints));
+    } catch (e) {}
+
+    renderCheckpointRubric(stageNum);
+  }
+
+  function updateCheckpointProgress(stageNum) {
+    const checks = state.checkpoints[stageNum] || [false, false, false];
+    const completed = checks.filter(Boolean).length;
+    const total = 3;
+    const pct = Math.round((completed / total) * 100);
+
+    if (els.checkpointScoreText) {
+      els.checkpointScoreText.textContent = `${completed} of ${total} Criteria Met (${pct}%)`;
+    }
+    if (els.checkpointProgressFill) {
+      els.checkpointProgressFill.style.width = `${pct}%`;
+    }
+
+    if (els.masteryBadge) {
+      if (completed === total) {
+        els.masteryBadge.textContent = 'Mastered';
+        els.masteryBadge.className = 'badge-mini badge-mastery mastered';
+      } else if (completed >= 2) {
+        els.masteryBadge.textContent = 'Proficient';
+        els.masteryBadge.className = 'badge-mini badge-mastery';
+      } else {
+        els.masteryBadge.textContent = 'In Progress';
+        els.masteryBadge.className = 'badge-mini badge-mastery';
+      }
+    }
+
+    if (els.btnVerifyCheckpoint) {
+      els.btnVerifyCheckpoint.disabled = completed < 2;
+    }
+  }
+
+  async function handleVerifyCheckpoint() {
+    const stageNum = state.currentStage;
+    const checks = state.checkpoints[stageNum] || [false, false, false];
+    try {
+      const res = await fetch('/api/lesson/verify-checkpoint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stage: stageNum,
+          checks: checks,
+        }),
+      });
+      const data = await res.json();
+      if (data && data.feedback) {
+        if (els.coachSpeechBubble) {
+          els.coachSpeechBubble.textContent = `✓ ${data.feedback}`;
+        }
+        if (data.can_advance && stageNum < 20) {
+          setTimeout(() => {
+            setStage(stageNum + 1);
+          }, 800);
+        }
+      }
+    } catch (err) {
+      console.warn('Verify checkpoint failed:', err);
+      if (stageNum < 20) {
+        setStage(stageNum + 1);
+      }
+    }
   }
 
   // ── PLAYBACK LOGIC ────────────────────────────────────────────────────
@@ -1038,6 +1196,11 @@
         processUploadedImage();
       }
     });
+
+    // Checkpoint completion button
+    if (els.btnVerifyCheckpoint) {
+      els.btnVerifyCheckpoint.addEventListener('click', handleVerifyCheckpoint);
+    }
   }
 
   // Run on DOM load

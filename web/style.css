@@ -1911,3 +1911,171 @@ body {
   min-height: 16px;
 }
 
+/* ==========================================================================
+   INTERACTIVE DRAWING CHECKPOINT & PRACTICE RUBRIC
+   ========================================================================== */
+
+.checkpoint-card {
+  border-left: 3px solid var(--gold-primary);
+  background: linear-gradient(180deg, rgba(27, 31, 40, 0.98), rgba(21, 24, 31, 0.98));
+}
+
+.checkpoint-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkpoint-step-badge {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  background: rgba(212, 175, 55, 0.15);
+  color: var(--gold-light);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.badge-mastery {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--cyan-accent);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.badge-mastery.mastered {
+  background: rgba(52, 211, 153, 0.18);
+  color: var(--green-accent);
+  border-color: rgba(52, 211, 153, 0.4);
+}
+
+.checkpoint-progress-wrap {
+  margin-bottom: 14px;
+}
+
+.checkpoint-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+.checkpoint-progress-bar {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.checkpoint-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyan-accent), var(--green-accent));
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.checkpoint-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.checkpoint-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.checkpoint-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(212, 175, 55, 0.25);
+}
+
+.checkpoint-item.checked {
+  background: rgba(52, 211, 153, 0.08);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.checkpoint-checkbox {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1.5px solid var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all var(--transition-fast);
+  color: transparent;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.checkpoint-item.checked .checkpoint-checkbox {
+  background: var(--green-accent);
+  border-color: var(--green-accent);
+  color: #111;
+}
+
+.checkpoint-item-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  transition: color var(--transition-fast);
+}
+
+.checkpoint-item.checked .checkpoint-item-text {
+  color: var(--text-primary);
+}
+
+.checkpoint-protip {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(212, 175, 55, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  font-size: 11.5px;
+  color: var(--gold-light);
+  line-height: 1.4;
+}
+
+.protip-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.checkpoint-action-row {
+  display: flex;
+}
+
+.btn-complete-stage {
+  width: 100%;
+  justify-content: center;
+  font-size: 12px;
+  padding: 9px 16px;
+}
+
+.btn-complete-stage:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+

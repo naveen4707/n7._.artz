@@ -244,9 +244,52 @@
           </div>
         </div>
 
+        <!-- INTERACTIVE DRAWING CHECKPOINT & PRACTICE RUBRIC -->
+        <div class="card checkpoint-card" id="checkpointCard">
+          <div class="card-header">
+            <div class="checkpoint-header-left">
+              <span class="card-title">STUDENT PRACTICE CHECKPOINT</span>
+              <span class="checkpoint-step-badge" id="checkpointStageBadge">Stage 20</span>
+            </div>
+            <span class="badge-mini badge-mastery" id="masteryBadge">In Progress</span>
+          </div>
+
+          <div class="checkpoint-progress-wrap">
+            <div class="checkpoint-progress-label">
+              <span>Anatomical Verification</span>
+              <span id="checkpointScoreText">0 of 3 Criteria Met (0%)</span>
+            </div>
+            <div class="checkpoint-progress-bar">
+              <div class="checkpoint-progress-fill" id="checkpointProgressFill" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <!-- Dynamic Checklist -->
+          <div class="checkpoint-checklist" id="checkpointChecklist">
+            <!-- Dynamically populated via JS -->
+          </div>
+
+          <!-- Pro Tip Callout -->
+          <div class="checkpoint-protip" id="checkpointProtip">
+            <span class="protip-icon">&#128161;</span>
+            <div class="protip-content">
+              <strong>Studio Pro Tip:</strong>
+              <span id="checkpointProtipText">Step back and view in reverse to spot perspective errors.</span>
+            </div>
+          </div>
+
+          <!-- Action Button -->
+          <div class="checkpoint-action-row">
+            <button class="btn btn-primary btn-complete-stage" id="btnVerifyCheckpoint" disabled>
+              <span class="btn-icon">&#10003;</span> Complete Step &amp; Unlock Next
+            </button>
+          </div>
+        </div>
+
         <!-- PORTRAIT RECOGNITION TELEMETRY CARD -->
         <div class="card telemetry-card">
           <div class="card-header">
+
             <span class="card-title">ANATOMICAL TELEMETRY</span>
             <span class="badge-mini" id="telemetryFaceStatus">Face Locked</span>
           </div>

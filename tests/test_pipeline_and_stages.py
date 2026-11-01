@@ -329,7 +329,71 @@ class TestLoomisPipelineAndStages(unittest.TestCase):
         r20 = Stage20FinalPortraitRenderer(self.construction, self.analysis, img_path=ref_img)
         self.assertFalse(hasattr(r20, "_render_graphite_tone_base"), "Stage 20 must NOT use raster photo blend shortcut")
 
+    def test_13_milestone_4_lesson_curriculum_and_checkpoints(self):
+        """
+        Verify Milestone 4: Interactive drawing lesson experience & learning checkpoints:
+        - Full 20-stage pedagogical curriculum covering Andrew Loomis principles
+        - Each stage contains step-by-step instructions, pro tips, common pitfalls, and 3-item checklist
+        - Checkpoint verification computes mastery levels ('Mastered', 'Proficient', 'Needs Practice')
+        - Proper advancement criteria and constructive pedagogical feedback
+        """
+        from lesson_curriculum import (
+            LESSON_CURRICULUM,
+            get_stage_curriculum,
+            verify_stage_checkpoint,
+        )
+
+        # 1. Verify all 20 stages are present in curriculum
+        self.assertEqual(len(LESSON_CURRICULUM), 20, "Curriculum must define all 20 Loomis stages")
+
+        for s in range(1, 21):
+            curr = get_stage_curriculum(s)
+            self.assertIsNotNone(curr, f"Stage {s} curriculum must be defined")
+            self.assertEqual(curr["stage"], s)
+            self.assertTrue(bool(curr.get("title")), f"Stage {s} must have a title")
+            self.assertTrue(bool(curr.get("category")), f"Stage {s} must have a category")
+            self.assertTrue(bool(curr.get("pencil_grade")), f"Stage {s} must specify pencil hardness")
+            self.assertTrue(bool(curr.get("loomis_core_rule")), f"Stage {s} must quote a Loomis principle")
+            self.assertGreaterEqual(len(curr.get("step_by_step_instructions", [])), 3, f"Stage {s} needs >= 3 step instructions")
+            self.assertGreaterEqual(len(curr.get("pro_tips", [])), 2, f"Stage {s} needs >= 2 pro tips")
+            self.assertGreaterEqual(len(curr.get("common_pitfalls", [])), 2, f"Stage {s} needs >= 2 common pitfalls")
+            self.assertEqual(len(curr.get("checkpoint_checklist", [])), 3, f"Stage {s} must have exactly 3 checklist criteria")
+
+            # Mastery question validation
+            q = curr.get("mastery_question")
+            self.assertIsNotNone(q, f"Stage {s} must have a mastery question")
+            self.assertIn("question", q)
+            self.assertIn("options", q)
+            self.assertIn("correct_index", q)
+            self.assertIn("explanation", q)
+
+        # 2. Verify checkpoint evaluation logic
+        # Full mastery (3/3)
+        res_full = verify_stage_checkpoint(1, [True, True, True])
+        self.assertEqual(res_full["score_percent"], 100)
+        self.assertEqual(res_full["mastery_level"], "Mastered")
+        self.assertTrue(res_full["can_advance"])
+        self.assertEqual(res_full["next_stage"], 2)
+
+        # Proficient (2/3)
+        res_prof = verify_stage_checkpoint(5, [True, True, False])
+        self.assertEqual(res_prof["score_percent"], 67)
+        self.assertEqual(res_prof["mastery_level"], "Proficient")
+        self.assertTrue(res_prof["can_advance"])
+
+        # Needs practice (0/3 or 1/3)
+        res_low = verify_stage_checkpoint(10, [False, False, False])
+        self.assertEqual(res_low["score_percent"], 0)
+        self.assertEqual(res_low["mastery_level"], "Needs Practice")
+        self.assertFalse(res_low["can_advance"])
+
+        # Invalid stage
+        res_inv = verify_stage_checkpoint(99, [True, True, True])
+        self.assertIn("error", res_inv)
+        self.assertFalse(res_inv["can_advance"])
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

@@ -50,6 +50,7 @@ if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
 from pipeline_runner import LoomisPipeline
+from lesson_curriculum import LESSON_CURRICULUM, get_stage_curriculum, verify_stage_checkpoint
 
 STAGE_METADATA: List[Dict[str, Any]] = [
     {
@@ -298,10 +299,24 @@ class LoomisRequestHandler(SimpleHTTPRequestHandler):
                 })
             return self._send_json({"stages": stages_with_status})
 
+        if path == "/api/lesson/curriculum":
+            return self._send_json({"stages": LESSON_CURRICULUM})
+
+        if path.startswith("/api/lesson/stage/"):
+            try:
+                stage_num = int(path.split("/")[-1])
+                curr = get_stage_curriculum(stage_num)
+                if curr:
+                    return self._send_json(curr)
+                return self._send_json({"error": f"Stage {stage_num} curriculum not found"}, status=HTTPStatus.NOT_FOUND)
+            except ValueError:
+                return self._send_json({"error": "Invalid stage number"}, status=HTTPStatus.BAD_REQUEST)
+
         if path == "/api/presets":
             presets = []
             ref = INPUT_DIR / "reference.jpg"
             if ref.exists():
+
                 presets.append({
                     "id": "reference",
                     "name": "Classical Royal Portrait (Indian Saree)",
@@ -440,6 +455,19 @@ class LoomisRequestHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         path = parsed.path
+
+        if path == "/api/lesson/verify-checkpoint":
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(content_len)
+                data = json.loads(body.decode("utf-8")) if body else {}
+                stage_num = int(data.get("stage", 1))
+                checks = data.get("checks", [])
+                notes = data.get("notes", "")
+                result = verify_stage_checkpoint(stage_num, checks, notes=notes)
+                return self._send_json(result)
+            except Exception as e:
+                return self._send_json({"error": str(e)}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
         if path == "/api/convert-bw":
             try:
