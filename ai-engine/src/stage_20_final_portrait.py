@@ -2,20 +2,22 @@
 LOOMIS AI — MASTER GRAPHITE PORTRAIT RENDERER
 STAGE 20: FINAL MASTER GRAPHITE PORTRAIT
 
-Deterministic, landmark-accurate and photorealistic graphite portrait renderer.
-Harmonizes:
-  • Soft continuous graphite tonal modeling derived from the Black & White portrait picture
-  • Subtle, authentic Andrew Loomis 3D structural underdrawing (Stages 1–7 scaffolding)
-  • Anatomical face oval, jawline, and chin curvature
-  • Natural hairline and authentic forehead marks / bindi
-  • Beautiful arched eyebrows with layered hair flow
-  • Clean almond eyes with kohl rim, iris fibers, solid 6B pupil, and pure-white specular catchlights
-  • Sculpted nose with alar flares, crescent nostril accents, and subtle bridge contour
-  • Full lips with Cupid's bow, sinuous closure line, lower lip cushion contour and highlight
-  • Anatomical ears with 3D perspective occlusion for 3/4 views
-  • Volumetric hair silhouette, crown volume, and framing curls
-  • Slender cylindrical neck and elegant shoulder / garment contours
+Deterministic, landmark-accurate, and 100% hand-drawn graphite portrait renderer.
+Pure procedural graphite rendering without photo-overlay or raster blending:
   • Cold-pressed art paper tooth and genuine graphite grain
+  • Whispering Andrew Loomis 3D structural underdrawing (Stages 1–7 scaffolding)
+  • Anatomical face oval, jawline, and rounded chin curvature
+  • Natural hairline and authentic forehead marks / bindi
+  • Beautiful arched eyebrows with layered 3-part hair flow
+  • Almond eyes with kohl rim, iris fibers, solid 6B pupil, and pure-white specular catchlights
+  • Sculpted 5-plane nose with alar flares, crescent nostril accents, and bridge contour
+  • Full lips with Cupid's bow, sinuous closure line, lower lip cushions, and luminous highlight
+  • Anatomical ears with 3D perspective occlusion for 3/4 views
+  • Volumetric hair mass, crown volume, and directional hair flow graphite tone
+  • Slender cylindrical neck and elegant shoulder / garment contours
+  • Hand-drawn graphite value cross-hatching across anatomical planes
+  • Soft eraser-lift luminous highlights on pupils, nose ball, and lower lip
+  • Elegant cursive atelier artist signature and seal
 """
 
 from __future__ import annotations
@@ -27,11 +29,8 @@ import random
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
-import cv2
-import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
-from bw_converter import get_bw_reference_path
 from graphite_quality import GraphiteQualityEngine, GraphiteStyle
 from hand_drawn_renderer import (
     CANVAS_WIDTH,
@@ -40,7 +39,7 @@ from hand_drawn_renderer import (
     TITLE,
     SUBTITLE,
 )
-from landmark_portrait_engine import LandmarkPortraitEngine, _catmull_rom_chain, _circle_pts
+from landmark_portrait_engine import LandmarkPortraitEngine, _catmull_rom_chain
 
 AI_ENGINE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = AI_ENGINE_DIR / "output"
@@ -63,8 +62,9 @@ def load_json(path: Path) -> Dict[str, Any]:
 class Stage20FinalPortraitRenderer:
     """
     Stage 20: Final Master Graphite Portrait.
-    Harmonizes full likeness contours, delicate features, hair volume, jewelry,
-    drapery, continuous tonal graphite shading, and authentic Loomis underdrawing.
+    Pure hand-drawn graphite portrait harmonizing full anatomical likeness contours,
+    delicate features, volumetric hair shading, fabric drapery, classical Loomis underdrawing,
+    and hand-drawn graphite tonal cross-hatching.
     """
 
     def __init__(
@@ -85,87 +85,14 @@ class Stage20FinalPortraitRenderer:
         self.lpe = LandmarkPortraitEngine(construction, analysis, img_path=self.img_path)
         self.scale = self.lpe.scale
 
-    def _render_graphite_tone_base(self) -> Image.Image:
-        """
-        Extracts continuous tonal values from the Black & White portrait picture,
-        warps them to exact canvas alignment, and blends them into soft graphite pencil washes.
-        """
-        # Ensure black and white reference exists
-        bw_path = get_bw_reference_path(self.img_path)
-        bw_img = cv2.imread(str(bw_path), cv2.IMREAD_GRAYSCALE)
-        if bw_img is None:
-            # Fallback to default canvas if B&W read fails
-            return Image.new("RGB", (CANVAS_WIDTH, CANVAS_HEIGHT), PAPER)
-
-        tf = self.lpe.base.transform
-        scale = tf["scale"]
-        offset_x = tf["offset_x"]
-        offset_y = tf["offset_y"]
-
-        # Affine matrix mapping source pixels to 1000x1200 canvas pixels
-        M = np.array([
-            [scale, 0, offset_x],
-            [0, scale, offset_y]
-        ], dtype=np.float32)
-
-        warped_bw = cv2.warpAffine(bw_img, M, (CANVAS_WIDTH, CANVAS_HEIGHT), borderValue=255)
-
-        # Build subject mask from facial landmarks + hair/neck volume
-        landmarks = self.analysis.get("landmarks", [])
-        subject_mask = np.zeros((CANVAS_HEIGHT, CANVAS_WIDTH), dtype=np.uint8)
-
-        if landmarks:
-            pts = np.array([
-                [int(p["x"] * scale + offset_x), int(p["y"] * scale + offset_y)]
-                for p in landmarks if 0 <= p["x"] * scale + offset_x < CANVAS_WIDTH and 0 <= p["y"] * scale + offset_y < CANVAS_HEIGHT
-            ], dtype=np.int32)
-
-            if len(pts) >= 6:
-                hull = cv2.convexHull(pts)
-                cv2.fillPoly(subject_mask, [hull], 255)
-
-                # Generous dilation to enclose full volumetric hair crown, curls, ears, and shoulders
-                dilate_px = int(max(200, scale * 300))
-                kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_px, dilate_px))
-                subject_mask = cv2.dilate(subject_mask, kernel)
-
-                # Bottom extension for garment drapery down to canvas bottom
-                max_lm_y = int(max(p[1] for p in pts))
-                subject_mask[max_lm_y:, :] = 255
-
-                # Smooth mask perimeter to feather naturally into paper tooth
-                subject_mask = cv2.GaussianBlur(subject_mask, (85, 85), 0)
-        else:
-            subject_mask.fill(255)
-
-        # Map pixel lightness to realistic graphite darkness:
-        # Paper = (246, 245, 242), Dark Graphite = (28, 26, 24)
-        norm_bw = warped_bw.astype(np.float32) / 255.0
-        darkness = 1.0 - norm_bw
-
-        # Studio-grade tonal curve: preserves luminous paper highlights,
-        # provides delicate midtone modeling, and renders deep 6B graphite in hair & deep shadows
-        darkness_curve = np.power(np.clip(darkness, 0.0, 1.0), 1.15) * 0.90
-        mask_weight = (subject_mask.astype(np.float32) / 255.0)
-        darkness = darkness_curve * mask_weight
-
-        r_chan = np.clip(246.0 - darkness * (246.0 - 28.0), 0, 255).astype(np.uint8)
-        g_chan = np.clip(245.0 - darkness * (245.0 - 26.0), 0, 255).astype(np.uint8)
-        b_chan = np.clip(242.0 - darkness * (242.0 - 24.0), 0, 255).astype(np.uint8)
-        tone_rgb = np.stack([r_chan, g_chan, b_chan], axis=-1)
-
-        # Tortillon stump soft-focus blending for smooth skin planes
-        tone_rgb = cv2.GaussianBlur(tone_rgb, (3, 3), 0)
-        return Image.fromarray(tone_rgb, "RGB")
-
     def render(self) -> Image.Image:
-        # 1. Base canvas with continuous tonal graphite modeling from B&W photo
-        canvas = self._render_graphite_tone_base()
+        # 1. Base canvas: genuine cold-pressed art paper
+        canvas = Image.new("RGB", (CANVAS_WIDTH, CANVAS_HEIGHT), PAPER)
         draw = ImageDraw.Draw(canvas)
 
         # 2. Natural cold-pressed art paper grain & tooth
         rng = random.Random(2024)
-        for _ in range(40000):
+        for _ in range(45000):
             gx = rng.randint(0, CANVAS_WIDTH - 1)
             gy = rng.randint(0, CANVAS_HEIGHT - 1)
             gv = rng.randint(236, 252)
@@ -174,7 +101,7 @@ class Stage20FinalPortraitRenderer:
         quality = GraphiteQualityEngine(
             canvas,
             seed=2024,
-            style=GraphiteStyle(width=1.0, wobble=0.25, passes=3, grain_strength=3),
+            style=GraphiteStyle(width=1.05, wobble=0.25, passes=3, grain_strength=3),
         )
         stroke_engine = type("EngineAdapter", (), {"quality": quality, "draw": draw})()
 
@@ -184,10 +111,11 @@ class Stage20FinalPortraitRenderer:
         self.lpe.draw_loomis_underdrawing(stroke_engine, strength_factor=0.18)
 
         # ─────────────────────────────────────────────────────────
-        # 4. PHOTO-ACCURATE SILHOUETTES & CONTOURS
+        # 4. PHOTO-ACCURATE SILHOUETTES, HAIR VOLUME & DRAPERY
         # ─────────────────────────────────────────────────────────
         self.lpe.draw_hair_mass_contours(stroke_engine)
-        self.lpe.draw_neck_and_garment(stroke_engine)
+        self.lpe.draw_hair_tonal_volume(stroke_engine, rng=random.Random(2024))
+        self.lpe.draw_neck_and_garment(stroke_engine, structural_only=False)
 
         # ─────────────────────────────────────────────────────────
         # 5. LANDMARK-DRIVEN ANATOMICAL REFINEMENT
@@ -195,16 +123,17 @@ class Stage20FinalPortraitRenderer:
         self.lpe.draw_face_oval(stroke_engine, strength=0.96, width=1.55)
         self.lpe.draw_hairline(stroke_engine, strength=0.68, width=1.05)
         self.lpe.draw_bindi(stroke_engine)
+        self.lpe.draw_cheek_forehead_contours(stroke_engine, strength=0.22)
 
         # Clean almond eyes with limbal ring, pupil, and white specular catchlights
         self.lpe.draw_eye(stroke_engine, "left", iris_strength=0.96)
         self.lpe.draw_eye(stroke_engine, "right", iris_strength=0.96)
 
-        # Arched eyebrows with natural hair flow
+        # Arched eyebrows with natural 3-part hair flow
         self.lpe.draw_eyebrow(stroke_engine, "left")
         self.lpe.draw_eyebrow(stroke_engine, "right")
 
-        # Sculpted nose with alar wings, crescent nostril accents, and bridge contour
+        # Sculpted 5-plane nose with alar wings, crescent nostril accents, and bridge contour
         self.lpe.draw_nose(stroke_engine)
 
         # Full lips with Cupid's bow, sinuous line of closure, and corner nodes
@@ -216,7 +145,7 @@ class Stage20FinalPortraitRenderer:
         # ─────────────────────────────────────────────────────────
         # 6. TONAL GRAPHITE SHADOWS (Real lighting-driven value planes)
         # ─────────────────────────────────────────────────────────
-        self.lpe.draw_shadow_structures(stroke_engine)
+        self.lpe.draw_shadow_structures(stroke_engine, rng=random.Random(2024))
 
         # ─────────────────────────────────────────────────────────
         # 7. SECONDARY DETAILS & FINE ACCENTS
@@ -233,13 +162,39 @@ class Stage20FinalPortraitRenderer:
                     f_end = (p_out[0] + sign * f_len * math.cos(f_ang), p_out[1] - f_len * math.sin(f_ang))
                     quality.pencil_stroke([p_out, f_end], strength=0.88, width=0.90, passes=1)
 
+        # Saree / garment fabric fold shading
+        cloth_contours = self.lpe.extractor.get_clothing_contours()
+        for pts in cloth_contours[::2]:
+            if len(pts) >= 4:
+                quality.ghost_stroke(_catmull_rom_chain(pts, 2), strength=0.45, width=0.75)
+
         # ─────────────────────────────────────────────────────────
-        # 8. CLASSICAL ATELIER HEADER & FOOTER
+        # 8. LUMINOUS HIGHLIGHTS & ERASER LIFTS
+        # ─────────────────────────────────────────────────────────
+        self.lpe.draw_luminous_highlights(quality.image)
+
+        # ─────────────────────────────────────────────────────────
+        # 9. ATELIER ARTIST SIGNATURE & FLOURISH
+        # ─────────────────────────────────────────────────────────
+        # Hand-drawn atelier signature in lower-right margin
+        quality.draw.text((700, 1075), "Andrew Loomis Method", fill=(80, 77, 72))
+        quality.draw.text((700, 1095), "LoomisAI Atelier", fill=(115, 112, 106))
+        # Flowing cursive signature flourish underline in graphite
+        quality.pencil_stroke(
+            [(695, 1115), (755, 1113), (835, 1110), (910, 1116), (940, 1112)],
+            strength=0.68,
+            width=0.95,
+            wobble=0.30,
+            passes=2,
+        )
+
+        # ─────────────────────────────────────────────────────────
+        # 10. CLASSICAL ATELIER HEADER & FOOTER
         # ─────────────────────────────────────────────────────────
         quality.draw.text((40, 30), f"LOOMIS AI | STAGE {STAGE_NUMBER:02d}", fill=TITLE)
         quality.draw.text((40, 62), STAGE_NAME.upper(), fill=TITLE)
         quality.draw.line((40, 105, 960, 105), fill=(205, 205, 201), width=1)
-        quality.draw.text((40, 1140), "AI-generated graphite portrait — Full anatomical construction & CV analysis", fill=SUBTITLE)
+        quality.draw.text((40, 1140), "AI-generated graphite portrait — Master Andrew Loomis method & anatomical construction", fill=SUBTITLE)
 
         return quality.finalize()
 

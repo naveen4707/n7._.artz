@@ -1086,47 +1086,257 @@ class LandmarkPortraitEngine:
         if rng is None:
             rng = random.Random(1818)
 
-        chin = self.lm(CHIN)
         light_angle = self.extractor.get_light_direction()
+
+        # 1. UNDER-JAW & NECK CYLINDER CAST SHADOW
+        chin = self.lm(CHIN)
+        jaw_l = self.lm(172) or self.lm(58)
+        jaw_r = self.lm(397) or self.lm(288)
         if chin:
-            neck_cx = chin[0]
-            for i in range(16):
-                y_off = chin[1] + 8 * self.scale + i * 2.2 * self.scale
-                half_w = (26 - i * 1.1) * self.scale
-                angle_deg = light_angle + rng.uniform(-4, 4)
+            neck_cx = chin[0] if not (jaw_l and jaw_r) else (jaw_l[0] + jaw_r[0]) * 0.5
+            neck_w = math.hypot(jaw_r[0] - jaw_l[0], jaw_r[1] - jaw_l[1]) * 0.44 if (jaw_l and jaw_r) else 65.0 * self.scale
+
+            # Primary hatch pass: parallel to estimated light angle
+            for i in range(20):
+                y_off = chin[1] + 6 * self.scale + i * 2.2 * self.scale
+                half_w = (neck_w * 0.50) * max(0.2, 1.0 - i * 0.028)
+                angle_deg = light_angle + rng.uniform(-3, 3)
                 rad = math.radians(angle_deg)
                 dx = half_w * math.cos(rad)
                 dy = half_w * math.sin(rad)
                 p0 = (neck_cx - dx, y_off - dy)
                 p1 = (neck_cx + dx, y_off + dy)
-                engine.quality.pencil_stroke([p0, p1], strength=0.62 - i * 0.025, width=0.85, passes=1)
+                str_val = max(0.18, 0.68 - i * 0.025)
+                engine.quality.pencil_stroke([p0, p1], strength=str_val, width=0.85, passes=1)
 
+            # Secondary cross-hatch pass: -42 degrees to light angle (densest near jaw rim)
+            for i in range(12):
+                y_off = chin[1] + 6 * self.scale + i * 2.4 * self.scale
+                half_w = (neck_w * 0.42) * max(0.2, 1.0 - i * 0.035)
+                angle_deg = light_angle - 42.0 + rng.uniform(-3, 3)
+                rad = math.radians(angle_deg)
+                dx = half_w * math.cos(rad)
+                dy = half_w * math.sin(rad)
+                p0 = (neck_cx - dx, y_off - dy)
+                p1 = (neck_cx + dx, y_off + dy)
+                str_val = max(0.16, 0.52 - i * 0.030)
+                engine.quality.pencil_stroke([p0, p1], strength=str_val, width=0.80, passes=1)
+
+        # 2. ORBITAL EYE SOCKET HOLLOWS & MEDIAL CANTHUS RECESSES
         for side in ["left", "right"]:
             edata = self.get_eye_data(side)
             bdata = self.get_brow_data(side)
-            if edata and bdata and edata.get("upper") and bdata.get("lower"):
-                e_up = edata["upper"]
-                b_lo = bdata["lower"]
-                for j in range(len(e_up) - 1):
-                    if j % 2 == 0 and j < len(b_lo):
-                        p_bot = e_up[j]
-                        p_top = b_lo[min(j, len(b_lo) - 1)]
-                        engine.quality.ghost_stroke([p_bot, p_top], strength=0.22, width=0.60)
+            if edata and bdata:
+                e_up = edata.get("upper") or edata.get("upper_lid", [])
+                b_lo = bdata.get("lower", [])
+                if e_up and b_lo:
+                    for j in range(len(e_up) - 1):
+                        if j % 2 == 0 and j < len(b_lo):
+                            p_bot = e_up[j]
+                            p_top = b_lo[min(j, len(b_lo) - 1)]
+                            mid_x = (p_bot[0] + p_top[0]) * 0.5
+                            mid_y = (p_bot[1] + p_top[1]) * 0.5
+                            hx = 3.0 * self.scale
+                            hy = 4.5 * self.scale
+                            engine.quality.ghost_stroke([(mid_x - hx, mid_y - hy), (mid_x + hx, mid_y + hy)], strength=0.28, width=0.65)
 
+                inner = edata.get("inner")
+                if inner:
+                    sign = -1 if side == "left" else 1
+                    for s_idx in range(4):
+                        hx = inner[0] + sign * (2.2 + s_idx * 1.8) * self.scale
+                        hy = inner[1] - (1.5 + s_idx * 2.2) * self.scale
+                        engine.quality.ghost_stroke([
+                            (hx - 2.5 * self.scale, hy - 2.0 * self.scale),
+                            (hx + 2.5 * self.scale, hy + 2.0 * self.scale)
+                        ], strength=0.34 - s_idx * 0.05, width=0.70)
+
+        # 3. NOSE PLANES: SUBNASALE CAST SHADOW & LATERAL SLOPE
+        nose_data = self.get_nose_data()
+        tip = nose_data.get("tip")
+        subnasale = self.lm(2)
+        if tip:
+            ref_pt = subnasale if subnasale else tip
+            # Primary drop shadow beneath columella
+            for k in range(6):
+                sy = ref_pt[1] + 2.5 * self.scale + k * 1.5 * self.scale
+                sw = (10.0 - k * 1.4) * self.scale
+                ang = 18.0 + rng.uniform(-3, 3)
+                dx = sw * math.cos(math.radians(ang))
+                dy = sw * math.sin(math.radians(ang))
+                engine.quality.pencil_stroke([(ref_pt[0] - dx, sy - dy), (ref_pt[0] + dx, sy + dy)], strength=0.60 - k * 0.08, width=0.82)
+            # Cross-hatch under nose
+            for k in range(3):
+                sy = ref_pt[1] + 3.0 * self.scale + k * 1.6 * self.scale
+                sw = (7.5 - k * 1.6) * self.scale
+                ang = -28.0 + rng.uniform(-3, 3)
+                dx = sw * math.cos(math.radians(ang))
+                dy = sw * math.sin(math.radians(ang))
+                engine.quality.pencil_stroke([(ref_pt[0] - dx, sy - dy), (ref_pt[0] + dx, sy + dy)], strength=0.48 - k * 0.09, width=0.75)
+
+            # Shadow on lateral slope of the bridge
+            bridge_pts = self.lm_pts(NOSE_BRIDGE)
+            shadow_sign = 1 if math.cos(math.radians(light_angle)) >= 0 else -1
+            if len(bridge_pts) >= 3:
+                for bp in bridge_pts[1:-1]:
+                    hx = bp[0] + shadow_sign * 5.0 * self.scale
+                    hy = bp[1]
+                    engine.quality.ghost_stroke([
+                        (hx, hy - 3.0 * self.scale),
+                        (hx + shadow_sign * 3.0 * self.scale, hy + 3.0 * self.scale)
+                    ], strength=0.30, width=0.65)
+
+        # 4. LIPS & MOUTH TONAL PLANES
+        lip_data = self.get_lip_data()
+        # Upper lip downward planar shading
+        uo = lip_data.get("upper_outer", [])
+        ui = lip_data.get("upper_inner", [])
+        if uo and ui and len(uo) >= 5 and len(ui) >= 5:
+            for idx in range(1, len(uo) - 1, 2):
+                p_top = uo[idx]
+                p_bot = ui[min(idx, len(ui) - 1)]
+                engine.quality.pencil_stroke([p_top, p_bot], strength=0.52, width=0.80, passes=1)
+
+        # Sub-labial / Labiomental groove crescent shadow below lower lip
+        lo = lip_data.get("lower_outer", [])
+        if lo and len(lo) >= 5:
+            lo_mid = lo[len(lo) // 2]
+            # Primary pass
+            for m in range(7):
+                ly = lo_mid[1] + 3.5 * self.scale + m * 1.5 * self.scale
+                lw = (15.0 - m * 1.8) * self.scale
+                engine.quality.pencil_stroke([(lo_mid[0] - lw, ly), (lo_mid[0] + lw, ly)], strength=0.58 - m * 0.07, width=0.82)
+            # Cross-hatch pass
+            for m in range(4):
+                ly = lo_mid[1] + 4.0 * self.scale + m * 1.8 * self.scale
+                lw = (11.0 - m * 2.0) * self.scale
+                dx = lw * 0.88
+                dy = lw * 0.28
+                engine.quality.pencil_stroke([(lo_mid[0] - dx, ly - dy), (lo_mid[0] + dx, ly + dy)], strength=0.44 - m * 0.08, width=0.75)
+
+        # Modiolus corner accents
+        c_left = lip_data.get("left")
+        c_right = lip_data.get("right")
+        if c_left:
+            engine.quality.pencil_stroke([(c_left[0] - 2.5 * self.scale, c_left[1]), (c_left[0] + 2.5 * self.scale, c_left[1])], strength=0.72, width=1.10)
+        if c_right:
+            engine.quality.pencil_stroke([(c_right[0] - 2.5 * self.scale, c_right[1]), (c_right[0] + 2.5 * self.scale, c_right[1])], strength=0.72, width=1.10)
+
+        # 5. CHIN BALL MENTAL PROTUBERANCE UNDERSIDE
+        if chin:
+            for ci in range(4):
+                c_rad = (11.0 - ci * 1.8) * self.scale
+                cy = chin[1] - 3.5 * self.scale + ci * 1.5 * self.scale
+                engine.quality.pencil_stroke([(chin[0] - c_rad, cy), (chin[0] + c_rad, cy)], strength=0.42 - ci * 0.08, width=0.78)
+
+        # 6. ZYGOMATIC CHEEK HOLLOWS (BUCCAL DEPRESSIONS)
+        malar_l = self.lm(116)
+        malar_r = self.lm(345)
+        for malar, sign in [(malar_l, -1), (malar_r, 1)]:
+            if malar:
+                for ch_i in range(5):
+                    cx0 = malar[0] + sign * (4.0 + ch_i * 2.2) * self.scale
+                    cy0 = malar[1] + (8.0 + ch_i * 3.2) * self.scale
+                    dx = 7.0 * self.scale * sign
+                    dy = 10.0 * self.scale
+                    engine.quality.ghost_stroke([(cx0, cy0), (cx0 + dx, cy0 + dy)], strength=0.26 - ch_i * 0.03, width=0.65)
+
+    def draw_hair_tonal_volume(self, engine, rng: Optional[random.Random] = None) -> None:
+        """
+        Renders rich procedural hand-drawn graphite tonal modeling across the hair mass.
+        Builds deep 4B/6B graphite tone, directional hair flow, and fiber luster
+        without any raster photo overlay.
+        """
+        if rng is None:
+            rng = random.Random(2024)
+
+        cranium = self.construction.get("loomis", {}).get("cranium", {})
+        center = cranium.get("center")
+        if center:
+            cx, cy = self.base.transform_point((center["x"], center["y"]))
+            rx = float(cranium.get("radiusX", 130)) * self.scale
+            ry = float(cranium.get("radiusY", 130)) * self.scale
+            r_avg = (rx + ry) * 0.5
+            hair_thick = 20.0 * self.scale
+
+            # 1. Multi-pass directional crown sweeps from forehead part down towards temples and back
+            for ang_deg in range(190, 351, 6):
+                base_rad = math.radians(ang_deg)
+                p0 = (cx + (r_avg * 0.88 + rng.uniform(-3, 3) * self.scale) * math.cos(base_rad),
+                      cy + (r_avg * 0.88 + rng.uniform(-3, 3) * self.scale) * math.sin(base_rad))
+                p1 = (cx + (r_avg + hair_thick * 0.6 + rng.uniform(-2, 2) * self.scale) * math.cos(base_rad + 0.08),
+                      cy + (r_avg + hair_thick * 0.6 + rng.uniform(-2, 2) * self.scale) * math.sin(base_rad + 0.08))
+                p2 = (cx + (r_avg + hair_thick * 1.05) * math.cos(base_rad + 0.15),
+                      cy + (r_avg + hair_thick * 1.05) * math.sin(base_rad + 0.15))
+                sweep = _catmull_rom_chain([p0, p1, p2], 4)
+                engine.quality.pencil_stroke(sweep, strength=0.72 + rng.uniform(-0.1, 0.15), width=1.10, wobble=0.25, passes=2)
+
+            # 2. Deep core shading in the back crown / bun mass
+            bun_cx = cx + rx * 0.45
+            bun_cy = cy - ry * 0.55
+            for b_i in range(16):
+                b_ang = math.radians(b_i * 22.5)
+                b_r = (22.0 + (b_i % 4) * 6.0) * self.scale
+                p_start = (bun_cx + b_r * 0.4 * math.cos(b_ang), bun_cy + b_r * 0.4 * math.sin(b_ang))
+                p_end = (bun_cx + b_r * math.cos(b_ang + 0.5), bun_cy + b_r * math.sin(b_ang + 0.5))
+                engine.quality.pencil_stroke([p_start, p_end], strength=0.82, width=1.15, passes=2)
+
+        # 3. Dynamic hair contours from photo with multi-pass graphite depth
+        hair_contours = self.extractor.get_hair_contours()
+        for idx, pts in enumerate(hair_contours):
+            if len(pts) >= 3:
+                smooth = self.spline(pts, 3)
+                engine.quality.pencil_stroke(smooth, strength=0.92, width=1.35, wobble=0.25, passes=2)
+                if len(smooth) >= 4 and idx % 2 == 0:
+                    offset_pts = [(p[0] + rng.uniform(-1.5, 1.5) * self.scale, p[1] + 2.0 * self.scale) for p in smooth]
+                    engine.quality.pencil_stroke(offset_pts, strength=0.68, width=0.95, wobble=0.30, passes=1)
+
+    def draw_luminous_highlights(self, image: Image.Image) -> None:
+        """
+        Adds soft eraser-lift luminous highlights to key anatomical focal points:
+          - Pure white specular catchlights in eye pupils
+          - Apex highlight on nose tip ball
+          - Central highlight on lower lip cushion
+          - Subtle highlight ridge along dorsal nasal bridge
+        """
+        draw = ImageDraw.Draw(image)
+        # 1. Specular pupil catchlights
+        for side in ["left", "right"]:
+            edata = self.get_eye_data(side)
+            if edata and not edata.get("is_closed", False):
+                ic = edata.get("iris_center")
+                ir = edata.get("iris_r", 12.0)
+                if ic:
+                    _draw_white_dot(image, ic[0] - ir * 0.28, ic[1] - ir * 0.32, max(ir * 0.18, 2.5))
+
+        # 2. Nose tip highlight (eraser lift)
         nose_data = self.get_nose_data()
         tip = nose_data.get("tip")
         if tip:
-            for k in range(5):
-                sy = tip[1] + 3 * self.scale + k * 1.5 * self.scale
-                sw = (8 - k * 1.2) * self.scale
-                engine.quality.pencil_stroke([(tip[0] - sw, sy), (tip[0] + sw, sy)], strength=0.50 - k * 0.08, width=0.80)
+            _draw_white_dot(image, tip[0] - 1.5 * self.scale, tip[1] - 1.5 * self.scale, 2.8 * self.scale)
+            bridge = nose_data.get("bridge")
+            if bridge and len(bridge) >= 3:
+                mid_b = bridge[len(bridge) // 2]
+                draw.line(
+                    [(mid_b[0] - 0.5 * self.scale, mid_b[1]), (mid_b[0] - 0.5 * self.scale, mid_b[1] + 8.0 * self.scale)],
+                    fill=(255, 255, 255),
+                    width=int(max(1, 1.5 * self.scale))
+                )
 
+        # 3. Lower lip central highlight cushion
         lip_data = self.get_lip_data()
         lo = lip_data.get("lower_outer")
-        if lo and len(lo) >= 5:
-            lo_mid = lo[len(lo) // 2]
-            for m in range(6):
-                ly = lo_mid[1] + 4 * self.scale + m * 1.6 * self.scale
-                lw = (14 - m * 1.8) * self.scale
-                engine.quality.pencil_stroke([(lo_mid[0] - lw, ly), (lo_mid[0] + lw, ly)], strength=0.55 - m * 0.07, width=0.80)
+        li = lip_data.get("lower_inner")
+        if lo and li and len(lo) >= 5 and len(li) >= 5:
+            mid_lo = lo[len(lo) // 2]
+            mid_li = li[len(li) // 2]
+            lip_c_y = (mid_lo[1] + mid_li[1]) * 0.5
+            lip_c_x = (mid_lo[0] + mid_li[0]) * 0.5
+            hl_w = 6.0 * self.scale
+            draw.line(
+                [(lip_c_x - hl_w, lip_c_y), (lip_c_x + hl_w, lip_c_y)],
+                fill=(255, 255, 255),
+                width=int(max(1, 1.8 * self.scale))
+            )
+
 

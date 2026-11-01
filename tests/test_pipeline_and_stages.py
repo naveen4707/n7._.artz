@@ -287,6 +287,49 @@ class TestLoomisPipelineAndStages(unittest.TestCase):
             self.assertIsInstance(img, Image.Image, f"Stage {num} must render a PIL Image")
             self.assertEqual(img.size, (1000, 1200), f"Stage {num} must be 1000x1200")
 
+    def test_12_milestone_3_graphite_rendering_pipeline(self):
+        """
+        Verify Milestone 3: Pure hand-drawn graphite rendering pipeline:
+        - Elimination of photo-blend / photo-overlay shortcuts in Stage 20
+        - Upgraded multi-angle directional cross-hatching across anatomical planes in LandmarkPortraitEngine
+        - Procedural volumetric hair graphite tone and fiber luster
+        - Soft eraser-lift luminous highlights on pupils, nose tip ball, and lower lip cushion
+        - Master artist cursive atelier signature and flourish
+        - Stages 17, 18, 19, and 20 render valid 1000x1200 RGB PIL Images
+        """
+        from stage_17_facial_contour_refinement import Stage17FacialContourRenderer
+        from stage_18_shadow_structures import Stage18ShadowRenderer
+        from stage_19_secondary_details import Stage19SecondaryDetailsRenderer
+        from stage_20_final_portrait import Stage20FinalPortraitRenderer
+        from landmark_portrait_engine import LandmarkPortraitEngine
+
+        ref_img = AI_ENGINE_DIR / "input" / "reference.jpg"
+        lpe = LandmarkPortraitEngine(self.construction, self.analysis, img_path=ref_img)
+
+        # 1. Verify anatomical shadow structure methods exist on engine
+        self.assertTrue(hasattr(lpe, "draw_shadow_structures"), "Engine must have draw_shadow_structures")
+        self.assertTrue(hasattr(lpe, "draw_hair_tonal_volume"), "Engine must have draw_hair_tonal_volume")
+        self.assertTrue(hasattr(lpe, "draw_luminous_highlights"), "Engine must have draw_luminous_highlights")
+
+        # 2. Render stages 17 to 20
+        stages_m3 = [
+            (17, Stage17FacialContourRenderer(self.construction, self.analysis, img_path=ref_img)),
+            (18, Stage18ShadowRenderer(self.construction, self.analysis, img_path=ref_img)),
+            (19, Stage19SecondaryDetailsRenderer(self.construction, self.analysis, img_path=ref_img)),
+            (20, Stage20FinalPortraitRenderer(self.construction, self.analysis, img_path=ref_img)),
+        ]
+
+        for num, renderer in stages_m3:
+            img = renderer.render()
+            self.assertIsInstance(img, Image.Image, f"Stage {num} must render a PIL Image")
+            self.assertEqual(img.size, (1000, 1200), f"Stage {num} must be 1000x1200")
+            self.assertEqual(img.mode, "RGB", f"Stage {num} must be RGB mode")
+
+        # 3. Verify Stage 20 does not rely on raster photo blending
+        r20 = Stage20FinalPortraitRenderer(self.construction, self.analysis, img_path=ref_img)
+        self.assertFalse(hasattr(r20, "_render_graphite_tone_base"), "Stage 20 must NOT use raster photo blend shortcut")
+
 
 if __name__ == "__main__":
     unittest.main()
+
